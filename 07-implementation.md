@@ -94,6 +94,68 @@ class SubmitReportHandler:
 
 ### Step 4：infrastructure 层 — Adapter 实现
 
+**此步骤需要向用户收集技术对接信息。** 设计阶段只需要知道"需要读邮件"，实现阶段必须知道"邮件 API 地址是什么"。
+
+#### 向用户收集的信息清单
+
+在写 adapter 之前，按需向用户要以下信息（不能猜，每个公司不一样）：
+
+| 对接项 | 需要的信息 | 怎么问 |
+|--------|-----------|--------|
+| 公司邮件系统 | API 地址、认证方式（OAuth/Token）、可读 scope | "邮件系统有 API 吗？怎么认证？" |
+| 办公 IM（飞书/钉钉/企微） | 开放平台 App ID、Webhook URL、消息格式 | "用的什么 IM？有开放平台吗？给我 App 凭证" |
+| 任务系统（Jira/GitLab） | API endpoint、Token、项目 ID | "任务系统的 API 地址和访问 Token？" |
+| Git 平台 | API endpoint、Token、仓库列表 | "Git 用的 GitHub/GitLab？Token 给我" |
+| 日历系统 | API 地址、OAuth scope | "日程用什么系统？有读取 API 吗？" |
+| K8s 集群 | kubeconfig、namespace、镜像仓库地址 | "部署到哪个集群？给我 kubeconfig" |
+| 数据库 | 连接地址、端口、用户名/密码、库名 | "用什么数据库？连接信息给我" |
+| 缓存 | Redis 地址、端口、密码 | "有 Redis 吗？地址密码？" |
+| 对象存储 | endpoint、bucket、AK/SK | "文件存哪？给我存储凭证" |
+| 消息队列 | Kafka/RabbitMQ 地址、Topic 名 | "事件走什么队列？地址？" |
+
+**原则**：
+- 不是所有项目都需要全部 —— 只问设计阶段 `@not_responsible` 和 `@agent_tool(source=...)` 里提到的外部依赖
+- 凭证通过环境变量注入，不硬编码在代码里
+- 拿到信息后写 adapter，对不上的地方写 ACL 翻译
+
+#### 实现模式
+
+```python
+# infrastructure/email_adapter.py（举例）
+import os
+import httpx
+
+class CompanyEmailAdapter:
+    """对接公司邮件系统 — 读取员工邮件摘要。
+
+    需要环境变量：
+      EMAIL_API_URL: 邮件系统 API 地址
+      EMAIL_TOKEN: 访问 Token
+    """
+    def __init__(self):
+        self.api_url = os.environ["EMAIL_API_URL"]
+        self.token = os.environ["EMAIL_TOKEN"]
+
+    async def get_emails(self, user_id: str, since_date: str) -> list[dict]:
+        async with httpx.AsyncClient() as client:
+            r = await client.get(
+                f"{self.api_url}/users/{user_id}/messages",
+                params={"since": since_date},
+                headers={"Authorization": f"Bearer {self.token}"},
+            )
+            # ACL 翻译：外部格式 → 本系统格式
+            return [self._translate(msg) for msg in r.json()["messages"]]
+
+    def _translate(self, raw_msg: dict) -> dict:
+        """防腐层：把邮件系统的格式翻译成本系统的格式"""
+        return {
+            "subject": raw_msg.get("subject", ""),
+            "from": raw_msg.get("sender", {}).get("email", ""),
+            "date": raw_msg.get("receivedDateTime", ""),
+            "preview": raw_msg.get("bodyPreview", "")[:200],
+        }
+```
+
 ```python
 # infrastructure/repository.py（新建）
 class WeeklyReportRepositoryImpl(WeeklyReportRepository):
