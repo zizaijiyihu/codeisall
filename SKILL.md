@@ -110,6 +110,7 @@ codeisall 的领域建模基于 DDD 方法论（聚合根 / 不变量 / 命令 /
 | `06-verification.md` | 改完之后的验证闭环（model + lint） | 任何代码修改完毕后必读 |
 | `07-implementation.md` | 实现阶段流程（设计完成后填 body / 写 infra / 写 interface） | 用户说"开始实现 / 写代码 / 填充逻辑" |
 | `08-agent-architecture.md` | Agent 架构：与领域的关系、两类 Agent、装饰器、视图规则 | 涉及 Agent 设计 / @agent 装饰器 / Agent 视图 |
+| `09-requirements-discovery.md` | 需求追问框架：结构化追问 → 直接产出装饰器骨架 | 用户说出需求但信息不完整时 |
 
 加载策略：**SKILL.md 的铁律始终生效，分文件按需读取。** 不要一次全读。
 
