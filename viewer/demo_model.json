@@ -1,0 +1,1216 @@
+{
+  "contexts": [
+    {
+      "id": "order",
+      "name": "订单",
+      "type": "core",
+      "type_rationale": "订单是平台核心交易能力，直接决定营收，需要最精细的战术设计",
+      "responsibility": "管理订单从创建到完成的生命周期",
+      "not_responsible": [
+        "支付收款",
+        "库存扣减",
+        "积分发放"
+      ],
+      "ubiquitous_language": [
+        {
+          "term": "订单",
+          "definition": "买家的一次购买行为，包含商品明细和收货信息",
+          "confusion": "payment Context 中的「交易」不是订单，是资金流转记录"
+        },
+        {
+          "term": "订单行",
+          "definition": "订单中一条商品明细，记录商品、数量、单价",
+          "confusion": "inventory Context 中的「SKU」是库存维度，不是订单行"
+        },
+        {
+          "term": "下单",
+          "definition": "将草稿订单确认提交，触发后续支付和库存流程",
+          "confusion": "不等于「支付」，下单后订单处于待支付状态"
+        }
+      ],
+      "routing_rules": [
+        {
+          "keyword": "下单、提交订单",
+          "belongs": "order",
+          "not_belongs": "不是 payment（订单不管收钱）"
+        },
+        {
+          "keyword": "加购物车、改收货地址",
+          "belongs": "order",
+          "not_belongs": "不是 inventory（购物车不涉及库存预占）"
+        },
+        {
+          "keyword": "取消订单",
+          "belongs": "order",
+          "not_belongs": "不是 payment（取消不等于退款）"
+        },
+        {
+          "keyword": "查看订单详情",
+          "belongs": "order",
+          "not_belongs": "不是 payment（支付详情在 payment）"
+        }
+      ],
+      "aggregates": [
+        {
+          "id": "order_agg",
+          "name": "Order",
+          "root": {
+            "name": "Order",
+            "attributes": [
+              {
+                "name": "order_id",
+                "type": "OrderId",
+                "description": "订单唯一标识"
+              },
+              {
+                "name": "user_id",
+                "type": "str",
+                "description": "下单用户"
+              },
+              {
+                "name": "status",
+                "type": "OrderStatus",
+                "description": "订单状态：DRAFT/PLACED/PAID/CANCELLED"
+              },
+              {
+                "name": "total_amount",
+                "type": "Money",
+                "description": "订单总金额"
+              },
+              {
+                "name": "lines",
+                "type": "List[OrderLine]",
+                "description": "订单商品明细"
+              },
+              {
+                "name": "shipping_address",
+                "type": "Address",
+                "description": "收货地址"
+              },
+              {
+                "name": "placed_at",
+                "type": "datetime | None",
+                "description": "下单时间"
+              },
+              {
+                "name": "cancelled_at",
+                "type": "datetime | None",
+                "description": "取消时间"
+              }
+            ]
+          },
+          "entities": [
+            {
+              "name": "OrderLine",
+              "description": "订单商品明细行",
+              "attributes": [
+                {
+                  "name": "line_id",
+                  "type": "str",
+                  "description": "行唯一标识"
+                },
+                {
+                  "name": "product_id",
+                  "type": "str",
+                  "description": "商品 ID"
+                },
+                {
+                  "name": "product_name",
+                  "type": "str",
+                  "description": "商品名称（下单时快照）"
+                },
+                {
+                  "name": "quantity",
+                  "type": "int",
+                  "description": "购买数量"
+                },
+                {
+                  "name": "price",
+                  "type": "Money",
+                  "description": "单价（下单时快照）"
+                }
+              ],
+              "methods": [
+                {
+                  "name": "update_quantity(new_qty)",
+                  "description": "修改购买数量",
+                  "precondition": "new_qty > 0",
+                  "postcondition": "quantity == new_qty"
+                }
+              ]
+            }
+          ],
+          "value_objects": [
+            {
+              "name": "Money",
+              "description": "金额值对象，不可变",
+              "attributes": [
+                {
+                  "name": "amount",
+                  "type": "Decimal",
+                  "description": "金额数值"
+                },
+                {
+                  "name": "currency",
+                  "type": "str",
+                  "description": "币种，默认 CNY"
+                }
+              ],
+              "constraints": [
+                "amount >= 0",
+                "currency 为 ISO 4217 标准代码"
+              ],
+              "frozen": true
+            },
+            {
+              "name": "Address",
+              "description": "收货地址值对象",
+              "attributes": [
+                {
+                  "name": "province",
+                  "type": "str",
+                  "description": "省"
+                },
+                {
+                  "name": "city",
+                  "type": "str",
+                  "description": "市"
+                },
+                {
+                  "name": "district",
+                  "type": "str",
+                  "description": "区"
+                },
+                {
+                  "name": "street",
+                  "type": "str",
+                  "description": "详细地址"
+                },
+                {
+                  "name": "receiver",
+                  "type": "str",
+                  "description": "收件人"
+                },
+                {
+                  "name": "phone",
+                  "type": "str",
+                  "description": "联系电话"
+                }
+              ],
+              "constraints": [
+                "所有字段非空"
+              ],
+              "frozen": true
+            },
+            {
+              "name": "OrderId",
+              "description": "订单 ID 值对象",
+              "attributes": [
+                {
+                  "name": "value",
+                  "type": "str",
+                  "description": "ID 值"
+                }
+              ],
+              "constraints": [
+                "非空",
+                "格式为 ORD-{timestamp}-{random}"
+              ],
+              "frozen": true
+            }
+          ],
+          "not_belong": [
+            "Payment",
+            "Logistics",
+            "PointsAccount"
+          ],
+          "invariants": [
+            {
+              "description": "订单总金额等于所有商品行金额之和",
+              "formal": "len(lines) > 0 → total_amount == sum(line.price.amount × line.quantity for line in lines)",
+              "fields": [
+                "total_amount",
+                "lines[].price",
+                "lines[].quantity"
+              ]
+            },
+            {
+              "description": "已取消的订单不能变更为其他状态",
+              "formal": "old.status == CANCELLED → new.status == CANCELLED",
+              "fields": [
+                "status"
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "place()",
+              "precondition": "status == DRAFT, lines 非空",
+              "operation": "status → PLACED, 记录 placed_at = now()",
+              "postcondition": "status == PLACED, placed_at 非空",
+              "event": "OrderPlaced(order_id, user_id, total_amount, placed_at)",
+              "not_do": "不扣库存、不创建支付单、不发通知",
+              "failure": "status != DRAFT → raise DomainError('只有草稿可下单'); lines 为空 → raise DomainError('订单必须包含商品')"
+            },
+            {
+              "name": "cancel(reason)",
+              "precondition": "status in (DRAFT, PLACED)",
+              "operation": "status → CANCELLED, 记录 cancelled_at = now()",
+              "postcondition": "status == CANCELLED",
+              "event": "OrderCancelled(order_id, reason, cancelled_at)",
+              "not_do": "不退款、不回补库存",
+              "failure": "status not in (DRAFT, PLACED) → raise DomainError('当前状态不可取消')"
+            },
+            {
+              "name": "add_line(product_id, product_name, qty, price)",
+              "precondition": "status == DRAFT, qty > 0, price > 0",
+              "operation": "创建 OrderLine 并加入 lines，重算 total_amount",
+              "postcondition": "lines 增加一条, total_amount 已更新",
+              "event": "无",
+              "not_do": "不校验库存是否充足",
+              "failure": "status != DRAFT → raise DomainError('只有草稿可添加商品')"
+            },
+            {
+              "name": "mark_paid()",
+              "precondition": "status == PLACED",
+              "operation": "status → PAID",
+              "postcondition": "status == PAID",
+              "event": "无（由 payment 的 PaymentConfirmed 触发）",
+              "not_do": "不处理支付逻辑本身",
+              "failure": "status != PLACED → raise DomainError('只有已下单的订单可标记为已支付')"
+            }
+          ],
+          "not_responsible_details": [
+            {
+              "responsibility": "支付收款",
+              "owner": "payment Context 的 Payment Aggregate",
+              "collaboration": "本 Aggregate 发出 OrderPlaced 事件，Payment 监听后创建支付单"
+            },
+            {
+              "responsibility": "库存扣减",
+              "owner": "inventory Context 的 Stock Aggregate",
+              "collaboration": "本 Aggregate 发出 OrderPlaced 事件，Stock 监听后预占库存"
+            },
+            {
+              "responsibility": "积分发放",
+              "owner": "points Context 的 PointsAccount Aggregate",
+              "collaboration": "本 Aggregate 发出 OrderPlaced 事件，PointsAccount 监听后发放积分"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "payment",
+      "name": "支付",
+      "type": "core",
+      "type_rationale": "支付直接涉及资金流转，是交易链路核心能力，错误容忍度极低",
+      "responsibility": "处理付款、退款、对账",
+      "not_responsible": [
+        "订单生命周期",
+        "物流追踪"
+      ],
+      "ubiquitous_language": [
+        {
+          "term": "支付单",
+          "definition": "一次资金收取操作的记录，关联某个订单",
+          "confusion": "不是「订单」，支付单只管钱的流转"
+        },
+        {
+          "term": "退款",
+          "definition": "将已收取的款项原路返回给用户",
+          "confusion": "不等于「取消订单」，退款是资金操作，取消是订单状态变更"
+        }
+      ],
+      "routing_rules": [
+        {
+          "keyword": "付款、支付、收银",
+          "belongs": "payment",
+          "not_belongs": "不是 order（订单不管收钱）"
+        },
+        {
+          "keyword": "退款、退钱",
+          "belongs": "payment",
+          "not_belongs": "不是 order（退款是资金操作）"
+        },
+        {
+          "keyword": "对账、账单",
+          "belongs": "payment",
+          "not_belongs": "不是 order（对账是资金维度）"
+        }
+      ],
+      "aggregates": [
+        {
+          "id": "payment_agg",
+          "name": "Payment",
+          "root": {
+            "name": "Payment",
+            "attributes": [
+              {
+                "name": "payment_id",
+                "type": "PaymentId",
+                "description": "支付单唯一标识"
+              },
+              {
+                "name": "order_id",
+                "type": "str",
+                "description": "关联订单 ID"
+              },
+              {
+                "name": "amount",
+                "type": "Money",
+                "description": "支付金额"
+              },
+              {
+                "name": "method",
+                "type": "PayMethod | None",
+                "description": "支付方式"
+              },
+              {
+                "name": "status",
+                "type": "PaymentStatus",
+                "description": "PENDING/PAID/REFUNDED"
+              },
+              {
+                "name": "paid_at",
+                "type": "datetime | None",
+                "description": "支付时间"
+              }
+            ]
+          },
+          "entities": [],
+          "value_objects": [
+            {
+              "name": "PayMethod",
+              "description": "支付方式值对象",
+              "attributes": [
+                {
+                  "name": "channel",
+                  "type": "str",
+                  "description": "支付渠道：wechat/alipay/bank"
+                },
+                {
+                  "name": "account",
+                  "type": "str",
+                  "description": "支付账号（脱敏）"
+                }
+              ],
+              "constraints": [
+                "channel 必须是已接入的渠道"
+              ],
+              "frozen": true
+            },
+            {
+              "name": "Money",
+              "description": "金额值对象（与 order 独立定义）",
+              "attributes": [
+                {
+                  "name": "amount",
+                  "type": "Decimal",
+                  "description": "金额数值"
+                },
+                {
+                  "name": "currency",
+                  "type": "str",
+                  "description": "币种"
+                }
+              ],
+              "constraints": [
+                "amount >= 0"
+              ],
+              "frozen": true
+            },
+            {
+              "name": "PaymentId",
+              "description": "支付单 ID 值对象",
+              "attributes": [
+                {
+                  "name": "value",
+                  "type": "str",
+                  "description": "ID 值"
+                }
+              ],
+              "constraints": [
+                "非空",
+                "格式为 PAY-{timestamp}-{random}"
+              ],
+              "frozen": true
+            }
+          ],
+          "not_belong": [
+            "Order",
+            "OrderLine",
+            "Stock"
+          ],
+          "invariants": [
+            {
+              "description": "支付金额必须为正",
+              "formal": "amount.amount > 0",
+              "fields": [
+                "amount"
+              ]
+            },
+            {
+              "description": "已完成的支付不可再次支付",
+              "formal": "status == PAID → pay() 不可调用",
+              "fields": [
+                "status"
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "pay(method)",
+              "precondition": "status == PENDING",
+              "operation": "status → PAID, method = method, paid_at = now()",
+              "postcondition": "status == PAID",
+              "event": "PaymentConfirmed(payment_id, order_id, amount, paid_at)",
+              "not_do": "不修改订单状态",
+              "failure": "status != PENDING → raise DomainError('只有待支付状态可以支付')"
+            },
+            {
+              "name": "refund(reason)",
+              "precondition": "status == PAID",
+              "operation": "status → REFUNDED",
+              "postcondition": "status == REFUNDED",
+              "event": "PaymentRefunded(payment_id, order_id, amount, reason)",
+              "not_do": "不取消订单",
+              "failure": "status != PAID → raise DomainError('只有已支付的订单可以退款')"
+            }
+          ],
+          "not_responsible_details": [
+            {
+              "responsibility": "订单状态管理",
+              "owner": "order Context 的 Order Aggregate",
+              "collaboration": "本 Aggregate 发出 PaymentConfirmed 事件，Order 监听后标记为已支付"
+            },
+            {
+              "responsibility": "物流追踪",
+              "owner": "未建模（可能是 logistics Context）",
+              "collaboration": "不需要协作"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "inventory",
+      "name": "库存",
+      "type": "supporting",
+      "type_rationale": "库存是交易链路的支撑能力，保证数据正确即可，不需要复杂建模",
+      "responsibility": "管理商品库存的预占、扣减、回补",
+      "not_responsible": [
+        "订单管理",
+        "商品信息维护"
+      ],
+      "ubiquitous_language": [
+        {
+          "term": "可用库存",
+          "definition": "当前可以被新订单预占的库存数量",
+          "confusion": "不是「总库存」，总库存 = 可用 + 已预占"
+        },
+        {
+          "term": "预占",
+          "definition": "为某个订单临时锁定的库存，尚未实际扣减",
+          "confusion": "不是「扣减」，预占可以释放，扣减不可逆"
+        }
+      ],
+      "routing_rules": [
+        {
+          "keyword": "库存查询、可用库存",
+          "belongs": "inventory",
+          "not_belongs": "不是 order（订单不管库存数量）"
+        },
+        {
+          "keyword": "预占库存、锁库存",
+          "belongs": "inventory",
+          "not_belongs": "不是 order（由事件驱动，不是订单主动调）"
+        },
+        {
+          "keyword": "释放库存、回补",
+          "belongs": "inventory",
+          "not_belongs": "不是 payment（退款不直接回补库存）"
+        }
+      ],
+      "aggregates": [
+        {
+          "id": "stock_agg",
+          "name": "Stock",
+          "root": {
+            "name": "Stock",
+            "attributes": [
+              {
+                "name": "stock_id",
+                "type": "StockId",
+                "description": "库存记录唯一标识"
+              },
+              {
+                "name": "sku",
+                "type": "Sku",
+                "description": "商品 SKU"
+              },
+              {
+                "name": "available_quantity",
+                "type": "int",
+                "description": "可用库存"
+              },
+              {
+                "name": "reserved_quantity",
+                "type": "int",
+                "description": "已预占库存"
+              }
+            ]
+          },
+          "entities": [],
+          "value_objects": [
+            {
+              "name": "Sku",
+              "description": "商品 SKU 值对象",
+              "attributes": [
+                {
+                  "name": "value",
+                  "type": "str",
+                  "description": "SKU 编码"
+                }
+              ],
+              "constraints": [
+                "非空",
+                "全局唯一"
+              ],
+              "frozen": true
+            },
+            {
+              "name": "StockId",
+              "description": "库存 ID 值对象",
+              "attributes": [
+                {
+                  "name": "value",
+                  "type": "str",
+                  "description": "ID 值"
+                }
+              ],
+              "constraints": [
+                "非空"
+              ],
+              "frozen": true
+            }
+          ],
+          "not_belong": [
+            "Order",
+            "Payment",
+            "PointsAccount"
+          ],
+          "invariants": [
+            {
+              "description": "可用库存不能为负",
+              "formal": "available_quantity >= 0",
+              "fields": [
+                "available_quantity"
+              ]
+            },
+            {
+              "description": "已预占库存不能为负",
+              "formal": "reserved_quantity >= 0",
+              "fields": [
+                "reserved_quantity"
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "reserve(qty)",
+              "precondition": "available_quantity >= qty, qty > 0",
+              "operation": "available_quantity -= qty, reserved_quantity += qty",
+              "postcondition": "available_quantity 减少 qty, reserved_quantity 增加 qty",
+              "event": "StockReserved(stock_id, sku, qty)",
+              "not_do": "不创建订单",
+              "failure": "available_quantity < qty → raise DomainError('库存不足')"
+            },
+            {
+              "name": "release(qty)",
+              "precondition": "reserved_quantity >= qty, qty > 0",
+              "operation": "available_quantity += qty, reserved_quantity -= qty",
+              "postcondition": "available_quantity 增加 qty, reserved_quantity 减少 qty",
+              "event": "StockReleased(stock_id, sku, qty)",
+              "not_do": "不处理退款",
+              "failure": "reserved_quantity < qty → raise DomainError('预占不足无法释放')"
+            }
+          ],
+          "not_responsible_details": [
+            {
+              "responsibility": "订单管理",
+              "owner": "order Context 的 Order Aggregate",
+              "collaboration": "监听 OrderPlaced/OrderCancelled 事件来预占/释放库存"
+            },
+            {
+              "responsibility": "商品信息维护",
+              "owner": "未建模（可能是 product Context）",
+              "collaboration": "不需要协作"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "points",
+      "name": "积分",
+      "type": "supporting",
+      "type_rationale": "积分是营销辅助能力，业务规则简单，保证正确即可",
+      "responsibility": "管理用户积分的发放、扣减、过期",
+      "not_responsible": [
+        "订单管理",
+        "用户账号管理"
+      ],
+      "ubiquitous_language": [
+        {
+          "term": "积分账户",
+          "definition": "用户的积分余额记录，一个用户一个账户",
+          "confusion": "不是「用户账号」，积分账户只管积分数值"
+        },
+        {
+          "term": "发放",
+          "definition": "增加用户积分余额",
+          "confusion": "不等于「支付抵扣」，发放是加积分，抵扣是减积分"
+        }
+      ],
+      "routing_rules": [
+        {
+          "keyword": "送积分、发积分",
+          "belongs": "points",
+          "not_belongs": "不是 order（订单只触发事件，不发积分）"
+        },
+        {
+          "keyword": "扣积分、抵扣",
+          "belongs": "points",
+          "not_belongs": "不是 payment（抵扣是积分操作，不是支付操作）"
+        },
+        {
+          "keyword": "积分余额查询",
+          "belongs": "points",
+          "not_belongs": "不是 order"
+        }
+      ],
+      "aggregates": [
+        {
+          "id": "points_agg",
+          "name": "PointsAccount",
+          "root": {
+            "name": "PointsAccount",
+            "attributes": [
+              {
+                "name": "account_id",
+                "type": "PointsAccountId",
+                "description": "积分账户唯一标识"
+              },
+              {
+                "name": "user_id",
+                "type": "str",
+                "description": "所属用户"
+              },
+              {
+                "name": "balance",
+                "type": "int",
+                "description": "当前积分余额"
+              }
+            ]
+          },
+          "entities": [],
+          "value_objects": [
+            {
+              "name": "PointsAccountId",
+              "description": "积分账户 ID 值对象",
+              "attributes": [
+                {
+                  "name": "value",
+                  "type": "str",
+                  "description": "ID 值"
+                }
+              ],
+              "constraints": [
+                "非空"
+              ],
+              "frozen": true
+            }
+          ],
+          "not_belong": [
+            "Order",
+            "Payment",
+            "Stock"
+          ],
+          "invariants": [
+            {
+              "description": "积分余额不能为负",
+              "formal": "balance >= 0",
+              "fields": [
+                "balance"
+              ]
+            }
+          ],
+          "methods": [
+            {
+              "name": "earn(amount, reason)",
+              "precondition": "amount > 0",
+              "operation": "balance += amount",
+              "postcondition": "balance 增加 amount",
+              "event": "PointsEarned(user_id, amount, reason)",
+              "not_do": "不校验订单是否存在",
+              "failure": "amount <= 0 → raise DomainError('发放积分必须为正数')"
+            },
+            {
+              "name": "deduct(amount, reason)",
+              "precondition": "balance >= amount, amount > 0",
+              "operation": "balance -= amount",
+              "postcondition": "balance 减少 amount",
+              "event": "PointsDeducted(user_id, amount, reason)",
+              "not_do": "不处理支付抵扣",
+              "failure": "balance < amount → raise DomainError('积分余额不足')"
+            }
+          ],
+          "not_responsible_details": [
+            {
+              "responsibility": "订单管理",
+              "owner": "order Context 的 Order Aggregate",
+              "collaboration": "监听 OrderPlaced 事件来发放积分"
+            },
+            {
+              "responsibility": "用户账号管理",
+              "owner": "未建模（可能是 user Context）",
+              "collaboration": "不需要协作"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "from": "order",
+      "to": "payment",
+      "relation_type": "customer-supplier",
+      "integration": "event",
+      "event": "OrderPlaced",
+      "label": "下单 → 创建支付",
+      "data_flow": "OrderPlaced 携带 order_id, user_id, total_amount",
+      "failure_strategy": "上游不感知（事件异步）"
+    },
+    {
+      "from": "order",
+      "to": "inventory",
+      "relation_type": "customer-supplier",
+      "integration": "event",
+      "event": "OrderPlaced",
+      "label": "下单 → 预占库存",
+      "data_flow": "OrderPlaced 携带 order_id, lines[].product_id, lines[].quantity",
+      "failure_strategy": "上游不感知（事件异步，库存不足时 Stock 发出 ReserveFailed）"
+    },
+    {
+      "from": "order",
+      "to": "points",
+      "relation_type": "customer-supplier",
+      "integration": "event",
+      "event": "OrderPlaced",
+      "label": "下单 → 送积分",
+      "data_flow": "OrderPlaced 携带 user_id, total_amount",
+      "failure_strategy": "上游不感知（事件异步，积分失败不影响订单）"
+    },
+    {
+      "from": "order",
+      "to": "inventory",
+      "relation_type": "customer-supplier",
+      "integration": "event",
+      "event": "OrderCancelled",
+      "label": "取消 → 释放库存",
+      "data_flow": "OrderCancelled 携带 order_id",
+      "failure_strategy": "上游不感知（事件异步）"
+    },
+    {
+      "from": "payment",
+      "to": "order",
+      "relation_type": "customer-supplier",
+      "integration": "event",
+      "event": "PaymentConfirmed",
+      "label": "支付成功 → 更新订单",
+      "data_flow": "PaymentConfirmed 携带 payment_id, order_id, amount, paid_at",
+      "failure_strategy": "上游不感知（事件异步）"
+    }
+  ],
+  "events": [
+    {
+      "name": "OrderPlaced",
+      "trigger": "Order.place()",
+      "fields": [
+        {
+          "name": "order_id",
+          "type": "str"
+        },
+        {
+          "name": "user_id",
+          "type": "str"
+        },
+        {
+          "name": "total_amount",
+          "type": "Decimal"
+        },
+        {
+          "name": "placed_at",
+          "type": "datetime"
+        }
+      ],
+      "consumers": [
+        {
+          "context": "inventory",
+          "aggregate": "Stock",
+          "method": "reserve()",
+          "action": "预占库存"
+        },
+        {
+          "context": "points",
+          "aggregate": "PointsAccount",
+          "method": "earn()",
+          "action": "发放积分"
+        }
+      ],
+      "non_consumers": [
+        {
+          "context": "payment",
+          "reason": "支付单由用户主动发起，不是自动创建"
+        }
+      ]
+    },
+    {
+      "name": "OrderCancelled",
+      "trigger": "Order.cancel()",
+      "fields": [
+        {
+          "name": "order_id",
+          "type": "str"
+        },
+        {
+          "name": "reason",
+          "type": "str"
+        },
+        {
+          "name": "cancelled_at",
+          "type": "datetime"
+        }
+      ],
+      "consumers": [
+        {
+          "context": "inventory",
+          "aggregate": "Stock",
+          "method": "release()",
+          "action": "释放预占库存"
+        }
+      ],
+      "non_consumers": [
+        {
+          "context": "payment",
+          "reason": "取消订单不自动退款，退款需用户主动申请"
+        }
+      ]
+    },
+    {
+      "name": "PaymentConfirmed",
+      "trigger": "Payment.pay()",
+      "fields": [
+        {
+          "name": "payment_id",
+          "type": "str"
+        },
+        {
+          "name": "order_id",
+          "type": "str"
+        },
+        {
+          "name": "amount",
+          "type": "Decimal"
+        },
+        {
+          "name": "paid_at",
+          "type": "datetime"
+        }
+      ],
+      "consumers": [
+        {
+          "context": "order",
+          "aggregate": "Order",
+          "method": "mark_paid()",
+          "action": "标记订单为已支付"
+        }
+      ],
+      "non_consumers": []
+    },
+    {
+      "name": "PaymentRefunded",
+      "trigger": "Payment.refund()",
+      "fields": [
+        {
+          "name": "payment_id",
+          "type": "str"
+        },
+        {
+          "name": "order_id",
+          "type": "str"
+        },
+        {
+          "name": "amount",
+          "type": "Decimal"
+        },
+        {
+          "name": "reason",
+          "type": "str"
+        }
+      ],
+      "consumers": [
+        {
+          "context": "inventory",
+          "aggregate": "Stock",
+          "method": "release()",
+          "action": "释放库存"
+        }
+      ],
+      "non_consumers": []
+    },
+    {
+      "name": "StockReserved",
+      "trigger": "Stock.reserve()",
+      "fields": [
+        {
+          "name": "stock_id",
+          "type": "str"
+        },
+        {
+          "name": "sku",
+          "type": "str"
+        },
+        {
+          "name": "qty",
+          "type": "int"
+        }
+      ],
+      "consumers": [],
+      "non_consumers": [
+        {
+          "context": "order",
+          "reason": "订单不关心库存操作细节"
+        }
+      ]
+    },
+    {
+      "name": "StockReleased",
+      "trigger": "Stock.release()",
+      "fields": [
+        {
+          "name": "stock_id",
+          "type": "str"
+        },
+        {
+          "name": "sku",
+          "type": "str"
+        },
+        {
+          "name": "qty",
+          "type": "int"
+        }
+      ],
+      "consumers": [],
+      "non_consumers": []
+    },
+    {
+      "name": "PointsEarned",
+      "trigger": "PointsAccount.earn()",
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "str"
+        },
+        {
+          "name": "amount",
+          "type": "int"
+        },
+        {
+          "name": "reason",
+          "type": "str"
+        }
+      ],
+      "consumers": [],
+      "non_consumers": []
+    },
+    {
+      "name": "PointsDeducted",
+      "trigger": "PointsAccount.deduct()",
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "str"
+        },
+        {
+          "name": "amount",
+          "type": "int"
+        },
+        {
+          "name": "reason",
+          "type": "str"
+        }
+      ],
+      "consumers": [],
+      "non_consumers": []
+    }
+  ],
+  "business_rules": [
+    {
+      "rule": "订单金额不能为负",
+      "source": "业务基本约束",
+      "aggregate": "Order",
+      "method": "add_line()",
+      "timing": "每次添加商品行时校验 total 非负"
+    },
+    {
+      "rule": "已取消订单不可再操作",
+      "source": "业务基本约束",
+      "aggregate": "Order",
+      "method": "所有状态变更方法",
+      "timing": "任何状态变更前校验"
+    },
+    {
+      "rule": "支付金额必须与订单金额一致",
+      "source": "财务合规",
+      "aggregate": "Payment",
+      "method": "pay()",
+      "timing": "支付前校验（由应用层传入订单金额比对）"
+    },
+    {
+      "rule": "库存预占不能超过可用库存",
+      "source": "业务基本约束",
+      "aggregate": "Stock",
+      "method": "reserve()",
+      "timing": "预占时校验"
+    },
+    {
+      "rule": "积分余额不能为负",
+      "source": "业务基本约束",
+      "aggregate": "PointsAccount",
+      "method": "deduct()",
+      "timing": "扣减时校验"
+    },
+    {
+      "rule": "下单成功送积分",
+      "source": "营销规则",
+      "aggregate": "PointsAccount",
+      "method": "earn()",
+      "timing": "消费 OrderPlaced 事件时，由应用层计算积分数"
+    }
+  ],
+  "domain_distribution": {
+    "core": [
+      "order",
+      "payment"
+    ],
+    "core_principle": "核心域投入最多建模精力，使用最精细的战术设计",
+    "supporting": [
+      "inventory",
+      "points"
+    ],
+    "supporting_principle": "保证正确即可，不需要复杂建模",
+    "generic": [],
+    "generic_principle": "用成熟方案/第三方服务/简单 CRUD，不过度设计"
+  },
+  "annotations": {},
+  "shared_infrastructure": [
+    { "id": "event_bus", "name": "Event Bus", "icon": "📡", "kind": "messaging", "description": "进程内事件总线，跨 Context 通信", "path": "shared/event_bus.py" },
+    { "id": "llm", "name": "LLM Client", "icon": "🤖", "kind": "ai", "description": "大模型调用封装（Anthropic 风格）", "path": "shared/llm/client.py" },
+    { "id": "pdf", "name": "PDF Parser", "icon": "📄", "kind": "tool", "description": "PDF 文档解析", "path": "shared/pdf/parser.py" },
+    { "id": "redis", "name": "Redis", "icon": "💾", "kind": "cache", "description": "缓存与分布式锁", "path": "shared/cache/redis_client.py" },
+    { "id": "ks3", "name": "KS3 Storage", "icon": "📦", "kind": "storage", "description": "对象存储（S3 兼容）", "path": "shared/storage/ks3_client.py" },
+    { "id": "mysql", "name": "MySQL", "icon": "🗄", "kind": "database", "description": "关系型存储（各 Context 独立 schema）", "path": "shared/db/mysql.py" }
+  ],
+  "code_structure": {
+    "order": {
+      "root": "order_ctx/",
+      "layers": {
+        "interface": { "dir": "api/", "files": [
+          { "name": "router.py", "desc": "POST /orders, GET /orders/{id}" },
+          { "name": "schemas.py", "desc": "请求/响应 DTO" }
+        ]},
+        "application": { "dir": "application/", "files": [
+          { "name": "place_order.py", "desc": "PlaceOrderCommand 处理" },
+          { "name": "cancel_order.py", "desc": "CancelOrderCommand 处理" },
+          { "name": "handlers/on_payment.py", "desc": "监听 PaymentConfirmed" }
+        ]},
+        "domain": { "dir": "domain/", "files": [
+          { "name": "order.py", "desc": "Order 聚合根", "maps_to": "Order" },
+          { "name": "order_line.py", "desc": "OrderLine 实体", "maps_to": "OrderLine" },
+          { "name": "value_objects/money.py", "desc": "Money 值对象", "maps_to": "Money" },
+          { "name": "value_objects/address.py", "desc": "Address 值对象", "maps_to": "Address" }
+        ]},
+        "infrastructure": { "dir": "infra/", "files": [
+          { "name": "repository.py", "desc": "OrderRepository（MySQL）", "uses": ["mysql"] },
+          { "name": "publisher.py", "desc": "事件发布器", "uses": ["event_bus"] }
+        ]}
+      }
+    },
+    "payment": {
+      "root": "payment_ctx/",
+      "layers": {
+        "interface": { "dir": "api/", "files": [
+          { "name": "router.py", "desc": "POST /payments/pay, POST /payments/refund" }
+        ]},
+        "application": { "dir": "application/", "files": [
+          { "name": "pay.py", "desc": "PayCommand 处理" },
+          { "name": "refund.py", "desc": "RefundCommand 处理" },
+          { "name": "handlers/on_order_placed.py", "desc": "监听 OrderPlaced 创建支付单" }
+        ]},
+        "domain": { "dir": "domain/", "files": [
+          { "name": "payment.py", "desc": "Payment 聚合根", "maps_to": "Payment" },
+          { "name": "value_objects/pay_method.py", "desc": "PayMethod 值对象", "maps_to": "PayMethod" },
+          { "name": "value_objects/money.py", "desc": "Money 值对象", "maps_to": "Money" }
+        ]},
+        "infrastructure": { "dir": "infra/", "files": [
+          { "name": "repository.py", "desc": "PaymentRepository", "uses": ["mysql"] },
+          { "name": "publisher.py", "desc": "事件发布", "uses": ["event_bus"] },
+          { "name": "gateway/wechat_pay.py", "desc": "微信支付适配" },
+          { "name": "gateway/alipay.py", "desc": "支付宝适配" }
+        ]}
+      }
+    },
+    "inventory": {
+      "root": "inventory_ctx/",
+      "layers": {
+        "interface": { "dir": "api/", "files": [
+          { "name": "router.py", "desc": "GET /stocks/{sku}" }
+        ]},
+        "application": { "dir": "application/", "files": [
+          { "name": "handlers/on_order_placed.py", "desc": "预占库存" },
+          { "name": "handlers/on_order_cancelled.py", "desc": "释放库存" },
+          { "name": "handlers/on_payment_refunded.py", "desc": "退款释放库存" }
+        ]},
+        "domain": { "dir": "domain/", "files": [
+          { "name": "stock.py", "desc": "Stock 聚合根", "maps_to": "Stock" },
+          { "name": "value_objects/sku.py", "desc": "Sku 值对象", "maps_to": "Sku" }
+        ]},
+        "infrastructure": { "dir": "infra/", "files": [
+          { "name": "repository.py", "desc": "StockRepository", "uses": ["mysql", "redis"] },
+          { "name": "publisher.py", "desc": "事件发布", "uses": ["event_bus"] }
+        ]}
+      }
+    },
+    "points": {
+      "root": "points_ctx/",
+      "layers": {
+        "interface": { "dir": "api/", "files": [
+          { "name": "router.py", "desc": "GET /points/balance" }
+        ]},
+        "application": { "dir": "application/", "files": [
+          { "name": "handlers/on_order_placed.py", "desc": "发放积分" }
+        ]},
+        "domain": { "dir": "domain/", "files": [
+          { "name": "account.py", "desc": "PointsAccount 聚合根", "maps_to": "PointsAccount" }
+        ]},
+        "infrastructure": { "dir": "infra/", "files": [
+          { "name": "repository.py", "desc": "PointsAccountRepository", "uses": ["mysql"] },
+          { "name": "publisher.py", "desc": "事件发布", "uses": ["event_bus"] }
+        ]}
+      }
+    }
+  }
+}

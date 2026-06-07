@@ -1,0 +1,12 @@
+# Dependencies (viewer 前端)
+viewer/node_modules/
+viewer/dist/
+
+# Runtime
+pending_changes.json
+__pycache__/
+*.pyc
+*.log
+
+# OS
+.DS_Store
