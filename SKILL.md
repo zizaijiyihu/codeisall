@@ -173,7 +173,7 @@ codeisall 的领域建模基于 DDD 方法论（聚合根 / 不变量 / 命令 /
 
 详细规则参考 `ddd-review-skill/02-dependency.md` 和 `05-event-system.md`。
 
-### 铁律 5：装饰器 → 看板 → ddd-lint 三方一致
+### 铁律 5：装饰器 → 看板 → codeisall-lint 三方一致
 
 任何改动后必须做：
 - `GET /api/model` 看看板模型，节点数量 / 字段 / 关系符合预期

@@ -74,7 +74,7 @@ curl -sf http://localhost:8502/api/source
   "live": true,                       // 是否成功连接 extract.py（活的模型）
   "example_dir": "/path/to/project",  // 当前扫描的代码目录
   "fallback_file": "/path/to/demo_model.json",  // live=false 时的回退
-  "lint_enabled": true                // 是否能跑 ddd-lint
+  "lint_enabled": true                // 是否能跑 codeisall-lint
 }
 ```
 
@@ -135,7 +135,7 @@ curl -sf http://localhost:8502/api/source
 
 ### `GET /api/lint`
 
-跑 `ddd_lint.py`，返回诊断结果。
+跑 `codeisall_lint.py`，返回诊断结果。
 
 ```json
 {
@@ -158,7 +158,7 @@ curl -sf http://localhost:8502/api/source
 }
 ```
 
-**改完代码必须跑这个**。规则清单见 `ddd-python/README.md` 的 "ddd-lint 规则清单" 段。
+**改完代码必须跑这个**。规则清单见 `ddd-python/README.md` 的 "codeisall-lint 规则清单" 段。
 
 ### `GET / PUT / PATCH / DELETE /api/pending-changes`
 
@@ -242,5 +242,5 @@ your-project/
 |------|------|
 | `live: false` | 检查 EXAMPLE_DIR 路径；检查 `ddd-python/scripts/extract.py` 是否能 import |
 | `/api/model` 返回空 contexts | 检查目录名是否带 `_ctx` 后缀；检查 manifest.py 是否有 `@bounded_context` |
-| `/api/lint` returns `available: false` | 检查 `ddd-python/ddd_lint.py` 是否能 import |
+| `/api/lint` returns `available: false` | 检查 `ddd-python/codeisall_lint.py` 是否能 import |
 | 看板某节点没出现 | 检查装饰器参数是否字面量（违反会被静默丢弃） |

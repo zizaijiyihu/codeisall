@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""ddd-lint：对 DDD Python 项目做静态质检
+"""codeisall-lint：对 DDD Python 项目做静态质检
 
 用法:
-    python3 -m ddd_lint <project_dir>
-    python3 -m ddd_lint <project_dir> --json
+    python3 scripts/codeisall_lint.py <project_dir>
+    python3 scripts/codeisall_lint.py <project_dir> --json
 
 退出码: 0 = 无 error，1 = 有 error
 """
@@ -636,7 +636,7 @@ def check_agent_no_domain_import(linter: Linter):
 
 def main(argv: list[str]) -> int:
     if len(argv) < 1:
-        print("用法: python3 -m ddd_lint <project_dir> [--json]", file=sys.stderr)
+        print("用法: python3 scripts/codeisall_lint.py <project_dir> [--json]", file=sys.stderr)
         return 2
     project = Path(argv[0]).resolve()
     if not project.is_dir():
@@ -645,7 +645,7 @@ def main(argv: list[str]) -> int:
 
     json_mode = "--json" in argv
 
-    print(f"{C('BOLD')}🔍 ddd-lint 扫描中：{C('RESET')}{project}")
+    print(f"{C('BOLD')}🔍 codeisall-lint 扫描中：{C('RESET')}{project}")
     print()
 
     linter = Linter(project)

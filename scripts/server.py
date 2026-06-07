@@ -8,7 +8,7 @@
 目录结构（相对于 codeisall-skill/）：
   scripts/server.py      ← 本文件
   scripts/extract.py     ← AST 抽取器
-  scripts/ddd_lint.py    ← lint 工具
+  scripts/codeisall_lint.py ← lint 工具
   viewer/                ← 前端看板
   ddd/                   ← 装饰器库
   example/               ← 自带示例项目
@@ -40,10 +40,10 @@ try:
     from extract import Extractor as _Extractor  # type: ignore
     EXTRACTOR_AVAILABLE = EXAMPLE_DIR.is_dir()
     try:
-        from ddd_lint import Linter as _Linter  # type: ignore
+        from codeisall_lint import Linter as _Linter  # type: ignore
         LINTER_AVAILABLE = EXAMPLE_DIR.is_dir()
     except Exception as _e:
-        print(f"[warn] ddd-lint unavailable: {_e}", file=sys.stderr)
+        print(f"[warn] codeisall-lint unavailable: {_e}", file=sys.stderr)
 except Exception as _e:
     print(f"[warn] live extract unavailable: {_e}", file=sys.stderr)
 
@@ -76,7 +76,7 @@ async def get_source():
 
 @app.get("/api/lint")
 async def get_lint():
-    """运行 ddd-lint，返回诊断 JSON。每次请求都重新跑（example/ 改了可立即看到）"""
+    """运行 codeisall-lint，返回诊断 JSON。每次请求都重新跑（example/ 改了可立即看到）"""
     if not LINTER_AVAILABLE:
         return JSONResponse({"available": False, "diagnostics": [], "summary": {"errors": 0, "warnings": 0}})
     try:
