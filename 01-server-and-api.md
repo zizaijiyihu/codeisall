@@ -97,9 +97,7 @@ curl -sf http://localhost:8502/api/source
       "type": "core",
       "type_rationale": "...",
       "responsibility": "...",
-      "not_responsible": [...],
       "ubiquitous_language": [{ "term": "...", "definition": "...", "confusion": "..." }],
-      "routing_rules": [{ "keyword": "...", "belongs": "...", "not_belongs": "..." }],
       "aggregates": [
         {
           "id": "order_Order_agg",
@@ -114,7 +112,6 @@ curl -sf http://localhost:8502/api/source
           "domain_services": [...],
           "invariants": [{ "description": "...", "formal": "...", "fields": [...], "source_location": {...} }],
           "methods": [{ "name": "place()", "precondition": "...", "postcondition": "...", "event": "...", "source_location": {...} }],
-          "not_responsible_details": [...],
           "source_location": {...}
         }
       ],
@@ -209,7 +206,7 @@ your-project/
 │   └── decorators.py
 ├── {ctx_id_1}_ctx/                 # 每个 Context 一个目录，目录名必须以 _ctx 结尾
 │   ├── __init__.py
-│   ├── manifest.py                 # 战略层装饰器（@bounded_context, @term, @routing_rule, @not_responsible）
+│   ├── manifest.py                 # 战略层装饰器（@bounded_context, @term）
 │   ├── domain/                     # 战术层：聚合、实体、值对象、领域服务
 │   │   ├── __init__.py
 │   │   ├── {root_name}.py          # @aggregate_root（每个聚合一个文件）
@@ -223,7 +220,6 @@ your-project/
 │   └── ...
 ├── shared/                         # 跨 ctx 共享的纯技术能力
 │   └── *.py                        # @shared_infrastructure
-└── business_rules.py               # @business_rule（顶层业务规则）
 ```
 
 **目录命名约定**：

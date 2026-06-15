@@ -371,27 +371,6 @@ def check_shared_reverse_import(linter: Linter):
                     hint="shared 只能放零业务语义的纯技术能力")
 
 
-@rule("routing-keyword-conflict")
-def check_routing_keyword_conflict(linter: Linter):
-    """Rule 8：同一个 keyword 不能 belongs 多个 Context"""
-    keyword_owners: dict[str, list[tuple[str, str, int]]] = defaultdict(list)
-    for loc in linter.locations.get("routing_rule", []):
-        kw = loc["kwargs"]
-        keyword = kw.get("keyword")
-        belongs = kw.get("belongs")
-        if keyword and belongs:
-            keyword_owners[keyword].append((belongs, loc["file"], loc["line"]))
-
-    for keyword, owners in keyword_owners.items():
-        belongs_set = {o[0] for o in owners}
-        if len(belongs_set) > 1:
-            for belongs, file, line in owners:
-                linter.emit("ERROR", "routing-keyword-conflict", file, line,
-                    f'路由关键词 "{keyword}" 冲突：\n'
-                    f"  同时被声明 belongs 多个 Context: {sorted(belongs_set)}",
-                    hint="一个业务关键词只能归属一个 Context（统一语言）")
-
-
 @rule("aggregate-root-no-command")
 def check_aggregate_has_command(linter: Linter):
     """Rule 9（额外）：聚合根至少要有 1 个 @command（避免贫血模型）"""

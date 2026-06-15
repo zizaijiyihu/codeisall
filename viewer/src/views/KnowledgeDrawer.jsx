@@ -93,20 +93,7 @@ function resolveEvent(evt, model) {
   return [...ids];
 }
 
-function resolveBoundary(nr, model) {
-  const ids = new Set();
-  if (nr.owner) {
-    for (const ctx of model.contexts) {
-      for (const agg of (ctx.aggregates || [])) {
-        const root = agg.root && typeof agg.root === 'object' ? agg.root : null;
-        if (root && nr.owner.includes(root.name)) {
-          ids.add(`${ctx.id}__${root.name}`);
-        }
-      }
-    }
-  }
-  return [...ids];
-}
+
 
 // =============== 列表渲染 ===============
 
@@ -152,10 +139,11 @@ function Section({ items, onClick, hoveredId, setHoveredId }) {
 
 const TABS = [
   { id: 'term', label: '统一语言', icon: '📖' },
-  { id: 'constraint', label: '约束', icon: '⚠' },
+  { id: 'invariant', label: '不变量', icon: '⚠' },
+  { id: 'vo_constraint', label: '值对象约束', icon: '📐' },
+  { id: 'business_rule', label: '业务规则', icon: '📋' },
   { id: 'contract', label: '行为契约', icon: '📋' },
   { id: 'event', label: '事件与协作', icon: '🔥' },
-  { id: 'boundary', label: '边界', icon: '🚫' },
 ];
 
 export default function KnowledgeDrawer({ model, onHighlight }) {
@@ -174,7 +162,7 @@ export default function KnowledgeDrawer({ model, onHighlight }) {
   };
 
   const data = useMemo(() => {
-    const out = { term: [], constraint: [], contract: [], event: [], boundary: [] };
+    const out = { term: [], invariant: [], vo_constraint: [], business_rule: [], contract: [], event: [] };
     if (!model) return out;
 
     // 构建测试覆盖索引：invariant_name → count, command_name:aspect → count
@@ -209,17 +197,6 @@ export default function KnowledgeDrawer({ model, onHighlight }) {
           ctxId: ctx.id,
         });
       });
-      // 路由规则合入统一语言（作为"归属声明"）
-      (ctx.routing_rules || []).forEach((r, i) => {
-        out.term.push({
-          key: `rt-${ctx.id}-${i}`,
-          icon: '🛣',
-          title: `「${r.keyword}」 → ${ctx.name}`,
-          detail: `不属于：${r.not_belongs || '无'}`,
-          owners: [`ctx-bg-${ctx.id}`],
-          ctxId: ctx.id,
-        });
-      });
     });
 
     // ========== ⚠ 约束：@invariant + @vo_constraint + @business_rule ==========
@@ -247,7 +224,7 @@ export default function KnowledgeDrawer({ model, onHighlight }) {
           });
           const testCount = myInvTests.length;
           const coverageLabel = testCount > 0 ? `✅ ${testCount} tests` : '⚠️ 未覆盖';
-          out.constraint.push({
+          out.invariant.push({
             key: `inv-${ctx.id}-${ai}-${i}`,
             icon: '⚠',
             title: `${obj.description}　${coverageLabel}`,
@@ -260,7 +237,7 @@ export default function KnowledgeDrawer({ model, onHighlight }) {
         // 值对象约束
         (agg.value_objects || []).filter(v => typeof v === 'object').forEach((vo, vi) => {
           (vo.constraints || []).forEach((c, ci) => {
-            out.constraint.push({
+            out.vo_constraint.push({
               key: `voc-${ctx.id}-${ai}-${vi}-${ci}`,
               icon: '📐',
               title: `${vo.name}：${c}`,
@@ -295,7 +272,7 @@ export default function KnowledgeDrawer({ model, onHighlight }) {
       const enforcerStr = enforcer ? `守护：${enforcer}` : '⚠️ 无守护代码';
       const sourceStr = r.source ? `来源：${r.source}` : '';
       const timingStr = r.timing ? `时机：${r.timing}` : '';
-      out.constraint.push({
+      out.business_rule.push({
         key: `rule-${i}`,
         icon: '📋',
         title: `${r.rule}　${enforcerBadge}`,
@@ -310,7 +287,7 @@ export default function KnowledgeDrawer({ model, onHighlight }) {
       const involves = first.involves || [];
       const steps = first.steps || rules.map(r => r.enforced_by || '?');
       const handlers = rules.map(r => r.enforced_by).filter(Boolean);
-      out.constraint.push({
+      out.business_rule.push({
         key: `rule-saga-${id}`,
         icon: '🔄',
         title: `${first.rule}　🔄 多步规则 (${rules.length} 个 handler)`,
@@ -377,35 +354,6 @@ export default function KnowledgeDrawer({ model, onHighlight }) {
             title: `${svc.name} 协作`,
             detail: `${svc.description || ''}　·　协作聚合：${svc.operates_on.join(', ')}`,
             owners: svcOwners,
-          });
-        });
-      });
-    });
-
-    // ========== 🚫 边界：@not_responsible + @not_responsible_for ==========
-    // ctx 级不负责
-    model.contexts.forEach((ctx) => {
-      (ctx.not_responsible || []).forEach((nr, i) => {
-        out.boundary.push({
-          key: `ctx-nr-${ctx.id}-${i}`,
-          icon: '🚫',
-          title: `${ctx.name} 不负责：${nr}`,
-          detail: '',
-          owners: [`ctx-bg-${ctx.id}`],
-        });
-      });
-      // 聚合级不负责详情
-      (ctx.aggregates || []).forEach((agg, ai) => {
-        const root = agg.root && typeof agg.root === 'object' ? agg.root : null;
-        (agg.not_responsible_details || []).forEach((nr, i) => {
-          out.boundary.push({
-            key: `nr-${ctx.id}-${ai}-${i}`,
-            icon: '🚫',
-            title: `${ctx.name}.${root?.name || ''} 不负责：${nr.responsibility}`,
-            detail: `归属：${nr.owner}　·　协作：${nr.collaboration}`,
-            owners: root
-              ? [...new Set([`${ctx.id}__${root.name}`, ...resolveBoundary(nr, model)])]
-              : resolveBoundary(nr, model),
           });
         });
       });

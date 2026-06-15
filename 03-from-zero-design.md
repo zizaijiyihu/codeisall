@@ -56,7 +56,7 @@ EXAMPLE_DIR=/path/to/{project} python3 -m uvicorn server:app --port 8502 &
 
 ```python
 """<ctx_name> Context"""
-from ddd.decorators import bounded_context, term, routing_rule, not_responsible
+from ddd.decorators import bounded_context, term
 
 
 @bounded_context(
@@ -68,16 +68,14 @@ from ddd.decorators import bounded_context, term, routing_rule, not_responsible
 )
 @term(term="<术语1>", definition="<定义>", confusion="<跟什么混淆>")
 @term(term="<术语2>", ...)
-@routing_rule(keyword="<关键词>", belongs="<ctx_id>", not_belongs="<不属于的地方>")
-@not_responsible(responsibility="<不负责的职责>")
 class <CtxName>Context:
     pass
 ```
 
 **这一步要写 3 类核心信息**：
 1. 至少 3-5 个统一语言术语（especially 易混淆的）
-2. 至少 1-2 条路由规则（什么场景归本 Context）
-3. 至少 1-2 条 not_responsible 声明（划清边界）
+2. responsibility 写得精确 + 必要时明说"不做什么"
+3. 跨 ctx 协作通过事件 + ACL 翻译（@event_handler）
 
 写完一个 ctx 后，**让用户刷新看板**，应该出现 ctx 框 + "等待战术设计" 占位节点。
 
@@ -88,7 +86,7 @@ class <CtxName>Context:
 ```python
 """<RootName> 聚合根"""
 from dataclasses import dataclass
-from ddd.decorators import aggregate_root, invariant, command, not_responsible_for
+from ddd.decorators import aggregate_root, invariant, command
 
 
 @aggregate_root(context="<ctx_id>", description="<一句话职责>")

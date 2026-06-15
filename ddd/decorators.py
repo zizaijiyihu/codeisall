@@ -26,8 +26,6 @@ def _attach(meta_kind):
 
 bounded_context = _attach('bounded_context')
 term = _attach('term')
-routing_rule = _attach('routing_rule')
-not_responsible = _attach('not_responsible')
 non_consumer_of = _attach('non_consumer_of')
 
 
@@ -37,7 +35,6 @@ aggregate_root = _attach('aggregate_root')
 entity = _attach('entity')
 value_object = _attach('value_object')
 vo_constraint = _attach('vo_constraint')
-not_responsible_for = _attach('not_responsible_for')
 domain_service = _attach('domain_service')
 
 

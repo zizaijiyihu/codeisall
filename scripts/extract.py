@@ -124,8 +124,6 @@ class Extractor:
         # 收集的中间数据
         self.contexts_meta: dict[str, dict] = {}          # ctx_id -> bounded_context meta
         self.terms: dict[str, list] = defaultdict(list)   # ctx_id -> [terms]
-        self.routing_rules: dict[str, list] = defaultdict(list)
-        self.not_responsible_ctx: dict[str, list] = defaultdict(list)
         self.aggregate_roots: dict[str, list[dict]] = defaultdict(list)
         # 每个 entry: { name, description, attributes, invariants, commands }
         # invariants/commands 按聚合精确归属
@@ -134,7 +132,6 @@ class Extractor:
         self.invariants: dict[str, list] = defaultdict(list)   # 仅作为 fallback，新逻辑用 aggregate_roots[i].invariants
         self.commands: dict[str, list] = defaultdict(list)     # 同上 fallback
         self.entity_methods: dict[tuple, list] = defaultdict(list)  # (ctx_id, entity_name) -> [methods]
-        self.not_responsible_for: dict[str, list] = defaultdict(list)
         self.event_handlers: list[dict] = []              # 每个 handler 含 ctx_id + meta
         self.business_rules: list[dict] = []
         self.shared_infra: list[dict] = []
@@ -202,15 +199,9 @@ class Extractor:
                     "source_location": src_loc,
                 })
             elif kind == "routing_rule":
-                cid = kwargs.get("__ctx__") or ctx_id
-                self.routing_rules[cid].append({
-                    "keyword": kwargs["keyword"],
-                    "belongs": kwargs["belongs"],
-                    "not_belongs": kwargs.get("not_belongs", ""),
-                    "source_location": src_loc,
-                })
+                pass  # 已废弃：codeisall 回归 DDD 原概念，去掉自创的 routing_rule
             elif kind == "not_responsible":
-                self.not_responsible_ctx[ctx_id].append(kwargs["responsibility"])
+                pass  # 已废弃：信息合并到 @bounded_context.responsibility 文本里
             elif kind == "aggregate_root":
                 cid = kwargs["context"]
                 # 在聚合根类内同时收集本聚合的 invariants 和 commands
@@ -281,12 +272,7 @@ class Extractor:
                     "source_location": src_loc,
                 })
             elif kind == "not_responsible_for":
-                self.not_responsible_for[ctx_id].append({
-                    "responsibility": kwargs["responsibility"],
-                    "owner": kwargs["owner"],
-                    "collaboration": kwargs["collaboration"],
-                    "source_location": src_loc,
-                })
+                pass  # 已废弃：聚合级边界信息合并到 @event_handler.label / data_flow
             elif kind == "business_rule":
                 # 类级 @business_rule（旧用法，标记为 orphan，让 lint 报错）
                 br = {**kwargs, "source_location": src_loc, "enforced_by": None}
@@ -526,7 +512,6 @@ class Extractor:
                     "not_belong": [],
                     "invariants": [],
                     "methods": [],
-                    "not_responsible_details": [],
                 }]
             else:
                 aggs = []
@@ -548,7 +533,6 @@ class Extractor:
                         "not_belong": [],
                         "invariants": ar["invariants"],
                         "methods": ar["commands"],
-                        "not_responsible_details": self.not_responsible_for.get(ctx_id, []) if is_primary else [],
                         "source_location": ar.get("source_location"),
                     })
             contexts.append({
@@ -557,9 +541,7 @@ class Extractor:
                 "type": meta["type"],
                 "type_rationale": meta.get("type_rationale", ""),
                 "responsibility": meta["responsibility"],
-                "not_responsible": self.not_responsible_ctx.get(ctx_id, []),
                 "ubiquitous_language": self.terms.get(ctx_id, []),
-                "routing_rules": self.routing_rules.get(ctx_id, []),
                 "aggregates": aggs,
                 "source_location": meta.get("source_location"),
             })

@@ -4,7 +4,6 @@
 - @aggregate_root 标注聚合根
 - @invariant 标注不变量（业务约束）
 - @command 标注业务方法及其契约
-- @not_responsible_for 标注本聚合不做什么
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -12,9 +11,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from ddd import (
-    aggregate_root, invariant, command, not_responsible_for,
-)
+from ddd import aggregate_root, invariant, command
 from .value_objects import Money, Address, OrderId
 from .order_line import OrderLine
 from shared.event_bus import bus
@@ -126,19 +123,4 @@ class Order:
 
 
 # ====== 边界声明（聚合不负责清单）======
-@not_responsible_for(
-    responsibility="支付收款",
-    owner="payment Context 的 Payment Aggregate",
-    collaboration="本 Aggregate 发出 OrderPlaced 事件，Payment 监听后创建支付单",
-)
-@not_responsible_for(
-    responsibility="库存扣减",
-    owner="inventory Context 的 Stock Aggregate",
-    collaboration="本 Aggregate 发出 OrderPlaced 事件，Stock 监听后预占库存",
-)
-@not_responsible_for(
-    responsibility="积分发放",
-    owner="points Context 的 PointsAccount Aggregate",
-    collaboration="本 Aggregate 发出 OrderPlaced 事件，PointsAccount 监听后发放积分",
-)
 class OrderBoundary: pass

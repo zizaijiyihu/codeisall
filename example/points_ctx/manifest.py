@@ -1,5 +1,5 @@
 """Points Context 元数据"""
-from ddd import bounded_context, term, routing_rule, not_responsible
+from ddd import bounded_context, term
 
 
 @bounded_context(
@@ -17,14 +17,7 @@ class PointsContext: pass
 class PointsTerms: pass
 
 
-@routing_rule(keyword="送积分、发积分", belongs="points",
-              not_belongs="不是 order（订单只触发事件，不发积分）")
-@routing_rule(keyword="扣积分、抵扣", belongs="points",
-              not_belongs="不是 payment（抵扣是积分操作，不是支付操作）")
-@routing_rule(keyword="积分余额查询", belongs="points", not_belongs="不是 order")
 class PointsRouting: pass
 
 
-@not_responsible(responsibility="订单管理")
-@not_responsible(responsibility="用户账号管理")
 class PointsNotResponsible: pass

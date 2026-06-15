@@ -114,7 +114,7 @@ class SubmitReportHandler:
 | 消息队列 | Kafka/RabbitMQ 地址、Topic 名 | "事件走什么队列？地址？" |
 
 **原则**：
-- 不是所有项目都需要全部 —— 只问设计阶段 `@not_responsible` 和 `@agent_tool(source=...)` 里提到的外部依赖
+- 不是所有项目都需要全部 —— 只问设计阶段 `@event_handler` 和 `@agent_tool(source=...)` 里提到的外部依赖
 - 凭证通过环境变量注入，不硬编码在代码里
 - 拿到信息后写 adapter，对不上的地方写 ACL 翻译
 

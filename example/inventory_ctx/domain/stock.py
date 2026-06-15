@@ -1,7 +1,7 @@
 """Stock 聚合根"""
 from __future__ import annotations
 from dataclasses import dataclass
-from ddd import aggregate_root, invariant, command, not_responsible_for
+from ddd import aggregate_root, invariant, command
 from .value_objects import Sku, StockId
 from shared.event_bus import bus
 
@@ -65,14 +65,4 @@ class Stock:
         })
 
 
-@not_responsible_for(
-    responsibility="订单管理",
-    owner="order Context 的 Order Aggregate",
-    collaboration="监听 OrderPlaced/OrderCancelled 事件来预占/释放库存",
-)
-@not_responsible_for(
-    responsibility="商品信息维护",
-    owner="未建模（可能是 product Context）",
-    collaboration="不需要协作",
-)
 class StockBoundary: pass

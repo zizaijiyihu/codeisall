@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from ddd import aggregate_root, invariant, command, not_responsible_for
+from ddd import aggregate_root, invariant, command
 from .value_objects import Money, PayMethod, PaymentId
 from shared.event_bus import bus
 
@@ -81,14 +81,4 @@ class Payment:
         })
 
 
-@not_responsible_for(
-    responsibility="订单状态管理",
-    owner="order Context 的 Order Aggregate",
-    collaboration="本 Aggregate 发出 PaymentConfirmed 事件，Order 监听后标记为已支付",
-)
-@not_responsible_for(
-    responsibility="物流追踪",
-    owner="未建模（可能是 logistics Context）",
-    collaboration="不需要协作",
-)
 class PaymentBoundary: pass

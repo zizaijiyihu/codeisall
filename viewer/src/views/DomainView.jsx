@@ -91,7 +91,6 @@ function buildLayout(model, callbacks, highlightIds, pendingMap) {
           member: root, memberType: 'root',
           contextId: ctx.id, contextName: ctx.name, contextType: ctx.type,
           invariants: agg.invariants, methods: agg.methods,
-          notResponsibleDetails: agg.not_responsible_details,
           onShowDetail, onJumpToArch,
           highlighted: isHL(rootId),
           pendingChange: getPending(rootId),
@@ -331,8 +330,7 @@ function buildLayout(model, callbacks, highlightIds, pendingMap) {
         ctx: {
           name: ctx.name, id: ctx.id, type: ctx.type,
           type_rationale: ctx.type_rationale, responsibility: ctx.responsibility,
-          not_responsible: ctx.not_responsible, ubiquitous_language: ctx.ubiquitous_language,
-          routing_rules: ctx.routing_rules,
+          ubiquitous_language: ctx.ubiquitous_language,
         },
         width: bgW, height: bgH,
         highlighted: isHL(`ctx-bg-${ctx.id}`),

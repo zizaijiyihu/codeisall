@@ -6,10 +6,8 @@
 
 | 装饰器 | 必填参数 | 可选参数 | 说明 |
 |--------|---------|----------|------|
-| `@bounded_context` | id, name, type, responsibility | type_rationale | type 取值：`core` / `supporting` / `generic` |
+| `@bounded_context` | id, name, type, responsibility | type_rationale | type 取值：`core` / `supporting` / `gennsibility 要写得**精确**，必要时直接说明"不做什么" |
 | `@term` | term, definition | confusion | 统一语言术语，confusion = "这个词容易跟什么混淆" |
-| `@routing_rule` | keyword, belongs | not_belongs | 需求分发规则，"遇到 keyword 归 belongs Context" |
-| `@not_responsible` | responsibility | — | Context 不负责的职责 |
 
 示例：
 
@@ -22,8 +20,6 @@
     responsibility="管理订单的创建、支付、取消全生命周期",
 )
 @term(term="下单", definition="顾客确认购买意向并创建订单", confusion="不同于加购物车")
-@routing_rule(keyword="下单", belongs="order", not_belongs="支付")
-@not_responsible(responsibility="库存扣减")
 class OrderContext: pass
 ```
 
@@ -102,22 +98,6 @@ class PricingService:
 ```
 
 看板会把 PricingService 显示为黄色独立节点，并用协作边连接到 Order 和 Promotion。
-
-## 战术层 — 不负责详情
-
-| 装饰器 | 必填参数 | 可选参数 | 说明 |
-|--------|---------|----------|------|
-| `@not_responsible_for` | responsibility, owner, collaboration | — | 某聚合不负责的职责 + 谁负责 + 怎么协作 |
-
-```python
-@aggregate_root(context="order", description="订单聚合根")
-@not_responsible_for(
-    responsibility="库存扣减",
-    owner="inventory.Stock",
-    collaboration="OrderPlaced 事件触发 Stock.reserve()",
-)
-class Order: ...
-```
 
 ## 事件 / 集成
 

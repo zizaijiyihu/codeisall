@@ -54,7 +54,7 @@ function InvariantItem({ inv }) {
 }
 
 function MemberNode({ data }) {
-  const { member, memberType, invariants, methods, notResponsibleDetails, onShowDetail, onJumpToArch, contextId, highlighted, operatesOn, pendingChange } = data;
+  const { member, memberType, invariants, methods, onShowDetail, onJumpToArch, contextId, highlighted, operatesOn, pendingChange } = data;
   const [expanded, setExpanded] = useState(false);
 
   const typeLabels = { root: 'Aggregate Root', entity: 'Entity', vo: 'Value Object', service: 'Domain Service', empty: '等待战术设计' };
@@ -67,7 +67,6 @@ function MemberNode({ data }) {
   const methodCount = member.methods?.length || 0;
   const invCount = invariants?.length || 0;
   const rootMethodCount = methods?.length || 0;
-  const nrCount = notResponsibleDetails?.length || 0;
 
   const pendingCls = pendingChange ? `pending-${pendingChange.change_type}` : '';
 
@@ -251,22 +250,6 @@ function MemberNode({ data }) {
             </Section>
           )}
 
-          {isRoot && nrCount > 0 && (
-            <Section title="不负责清单" count={nrCount}>
-              <table className="nr-table">
-                <thead><tr><th>职责</th><th>归属</th><th>协作</th></tr></thead>
-                <tbody>
-                  {notResponsibleDetails.map((nr, i) => (
-                    <tr key={i}>
-                      <td>{nr.responsibility}</td>
-                      <td>{nr.owner}</td>
-                      <td>{nr.collaboration}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Section>
-          )}
         </div>
       )}
     </div>

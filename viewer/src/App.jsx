@@ -172,13 +172,6 @@ export default function App() {
               {ctxPopup.type_rationale && (
                 <div className="ctx-bg-rationale">{ctxPopup.type_rationale}</div>
               )}
-              {ctxPopup.not_responsible && ctxPopup.not_responsible.length > 0 && (
-                <div className="ctx-bg-nr">
-                  {ctxPopup.not_responsible.map((nr) => (
-                    <span key={nr} className="nr-tag">{nr}</span>
-                  ))}
-                </div>
-              )}
               {ctxPopup.ubiquitous_language && ctxPopup.ubiquitous_language.length > 0 && (
                 <div className="member-section">
                   <div className="sub-label">统一语言</div>
@@ -190,23 +183,6 @@ export default function App() {
                           <td className="ul-term">{t.term}</td>
                           <td>{t.definition}</td>
                           <td className="ul-confuse">{t.confusion}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {ctxPopup.routing_rules && ctxPopup.routing_rules.length > 0 && (
-                <div className="member-section">
-                  <div className="sub-label">路由规则</div>
-                  <table className="rr-table">
-                    <thead><tr><th>关键词</th><th>归属</th><th>不归属</th></tr></thead>
-                    <tbody>
-                      {ctxPopup.routing_rules.map((r, i) => (
-                        <tr key={i}>
-                          <td>{r.keyword}</td>
-                          <td className="rr-belongs">{r.belongs}</td>
-                          <td className="rr-not">{r.not_belongs}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -2,9 +2,7 @@
 
 战略层知识：Context 定位、统一语言、路由规则、边界声明
 """
-from ddd import (
-    bounded_context, term, routing_rule, not_responsible,
-)
+from ddd import bounded_context, term
 
 
 @bounded_context(
@@ -35,19 +33,8 @@ class OrderTerms: pass
 
 
 # === 路由规则 ===
-@routing_rule(keyword="下单、提交订单", belongs="order",
-              not_belongs="不是 payment（订单不管收钱）")
-@routing_rule(keyword="加购物车、改收货地址", belongs="order",
-              not_belongs="不是 inventory（购物车不涉及库存预占）")
-@routing_rule(keyword="取消订单", belongs="order",
-              not_belongs="不是 payment（取消不等于退款）")
-@routing_rule(keyword="查看订单详情", belongs="order",
-              not_belongs="不是 payment（支付详情在 payment）")
 class OrderRouting: pass
 
 
 # === 不负责清单（Context 级声明）===
-@not_responsible(responsibility="支付收款")
-@not_responsible(responsibility="库存扣减")
-@not_responsible(responsibility="积分发放")
 class OrderNotResponsible: pass

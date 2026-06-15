@@ -1,5 +1,5 @@
 """Payment Context 元数据"""
-from ddd import bounded_context, term, routing_rule, not_responsible
+from ddd import bounded_context, term
 
 
 @bounded_context(
@@ -17,15 +17,7 @@ class PaymentContext: pass
 class PaymentTerms: pass
 
 
-@routing_rule(keyword="付款、支付、收银", belongs="payment",
-              not_belongs="不是 order（订单不管收钱）")
-@routing_rule(keyword="退款、退钱", belongs="payment",
-              not_belongs="不是 order（退款是资金操作）")
-@routing_rule(keyword="对账、账单", belongs="payment",
-              not_belongs="不是 order（对账是资金维度）")
 class PaymentRouting: pass
 
 
-@not_responsible(responsibility="订单生命周期")
-@not_responsible(responsibility="物流追踪")
 class PaymentNotResponsible: pass

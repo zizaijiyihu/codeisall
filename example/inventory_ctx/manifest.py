@@ -1,5 +1,5 @@
 """Inventory Context 元数据"""
-from ddd import bounded_context, term, routing_rule, not_responsible
+from ddd import bounded_context, term
 
 
 @bounded_context(
@@ -17,15 +17,7 @@ class InventoryContext: pass
 class InventoryTerms: pass
 
 
-@routing_rule(keyword="库存查询、可用库存", belongs="inventory",
-              not_belongs="不是 order（订单不管库存数量）")
-@routing_rule(keyword="预占库存、锁库存", belongs="inventory",
-              not_belongs="不是 order（由事件驱动，不是订单主动调）")
-@routing_rule(keyword="释放库存、回补", belongs="inventory",
-              not_belongs="不是 payment（退款不直接回补库存）")
 class InventoryRouting: pass
 
 
-@not_responsible(responsibility="订单管理")
-@not_responsible(responsibility="商品信息维护")
 class InventoryNotResponsible: pass
