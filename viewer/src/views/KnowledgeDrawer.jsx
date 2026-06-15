@@ -67,9 +67,14 @@ function resolveInvariant(inv, ctxId, aggRootName) {
 }
 
 function resolveBusinessRule(rule, model) {
-  const found = findAggByRootName(model, rule.aggregate);
-  if (found) return [`${found.ctx.id}__${found.root.name}`];
-  return [];
+  // 新 schema：按 involves（多个聚合）解析
+  const ids = new Set();
+  const involves = rule.involves || (rule.aggregate ? [rule.aggregate] : []);
+  for (const aggName of involves) {
+    const found = findAggByRootName(model, aggName);
+    if (found) ids.add(`${found.ctx.id}__${found.root.name}`);
+  }
+  return [...ids];
 }
 
 function resolveEvent(evt, model) {
@@ -266,14 +271,51 @@ export default function KnowledgeDrawer({ model, onHighlight }) {
         });
       });
     });
-    // 业务规则合入约束
-    (model.business_rules || []).forEach((r, i) => {
+    // 业务规则合入约束（新 schema：involves + enforced_by + 多步规则按 id 聚合）
+    const businessRulesById = new Map();  // id → [rules...] 用于多步规则聚合
+    const standaloneRules = [];
+    (model.business_rules || []).forEach((r) => {
+      if (r.id) {
+        if (!businessRulesById.has(r.id)) businessRulesById.set(r.id, []);
+        businessRulesById.get(r.id).push(r);
+      } else {
+        standaloneRules.push(r);
+      }
+    });
+
+    // 单步业务规则
+    standaloneRules.forEach((r, i) => {
+      const involves = r.involves || (r.aggregate ? [r.aggregate] : []);
+      const enforcer = r.enforced_by;
+      const enforcerType = r.enforced_by_type || 'unknown';
+      const enforcerBadge = enforcerType === 'event_handler' ? '⚡ event handler'
+        : enforcerType === 'domain_service_method' ? '🤝 domain service'
+        : '⚠️ 未挂载守护代码';
+      const involvesStr = involves.length > 0 ? `涉及：${involves.join(' + ')}` : '';
+      const enforcerStr = enforcer ? `守护：${enforcer}` : '⚠️ 无守护代码';
+      const sourceStr = r.source ? `来源：${r.source}` : '';
+      const timingStr = r.timing ? `时机：${r.timing}` : '';
       out.constraint.push({
         key: `rule-${i}`,
         icon: '📋',
-        title: r.rule,
-        detail: `来源：${r.source}　·　时机：${r.timing}`,
+        title: `${r.rule}　${enforcerBadge}`,
+        detail: [involvesStr, enforcerStr, sourceStr, timingStr].filter(Boolean).join('　·　'),
         owners: resolveBusinessRule(r, model),
+      });
+    });
+
+    // 多步业务规则（按 id 聚合）
+    businessRulesById.forEach((rules, id) => {
+      const first = rules[0];
+      const involves = first.involves || [];
+      const steps = first.steps || rules.map(r => r.enforced_by || '?');
+      const handlers = rules.map(r => r.enforced_by).filter(Boolean);
+      out.constraint.push({
+        key: `rule-saga-${id}`,
+        icon: '🔄',
+        title: `${first.rule}　🔄 多步规则 (${rules.length} 个 handler)`,
+        detail: `id=${id}　·　涉及：${involves.join(' + ')}　·　步骤：${steps.join(' → ')}`,
+        owners: handlers.flatMap(h => resolveBusinessRule({...first, enforced_by: h}, model)),
       });
     });
 
