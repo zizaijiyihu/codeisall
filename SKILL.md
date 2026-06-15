@@ -118,8 +118,9 @@ codeisall 的领域建模基于 DDD 方法论（聚合根 / 不变量 / 命令 /
 | `09-requirements-discovery.md` | 需求追问框架：结构化追问 → 直接产出装饰器骨架 | 用户说出需求但信息不完整时 |
 | `10-rules-and-invariants.md` | 不变量 vs 业务规则：判定流程 + 守护代码强制规则 | 写 @invariant 或 @business_rule 前必读 |
 | `11-eventual-consistency.md` | 最终一致性保障：幂等 / Outbox / Saga / ACL / 失败策略 | 跨 ctx 业务规则实现时必读 |
-| `12-self-review-checklist.md` | 结构性自查清单（A-J 共 10 类）| 代码生成完毕、告诉用户"完成"前必读 |
-| `13-review-subagent.md` | 子 Agent 复审协议：主审 + 复审双重保障 | 完整流程结束、自查通过后启动 |
+| `12-domain-review-checklist.md` | 领域建模自查清单（A-F）| 设计阶段 1-3 完成、启动 domain-reviewer 前必读 |
+| `13-code-review-checklist.md` | 代码实现自查清单（G-K）| 实现阶段 4-5 完成、启动 code-reviewer 前必读 |
+| `14-review-subagents.md` | 双 Reviewer 复审协议：domain-reviewer + code-reviewer 分阶段把关 | 完整流程的两个门禁，必读 |
 
 加载策略：**SKILL.md 的铁律始终生效，分文件按需读取。** 不要一次全读。
 
@@ -219,15 +220,20 @@ codeisall 的领域建模基于 DDD 方法论（聚合根 / 不变量 / 命令 /
 违反此铁律 = 看板撒谎（看板显示有规则，代码里没人守护）。
 详见 `10-rules-and-invariants.md`。
 
-### 铁律 8：完成前必须自查 + 子 Agent 复审
+### 铁律 8：两个阶段，两个 Reviewer，两道门禁
 
-代码生成完毕后，**告诉用户"完成"之前必须**：
+codeisall 把 Reviewer 拆成**两个 subagent**，各管一段：
 
-1. **自查**：按 `12-self-review-checklist.md` 的 10 类清单逐项核对
-2. **子 Agent 复审**：启动独立 Agent，用同一份 skill 反向审查
-3. **看板 0 红标 + lint 0 errors + 测试 0 fail** 才算完成
+| 阶段 | 自查清单 | 复审 subagent | 门禁含义 |
+|---|---|---|---|
+| 设计阶段（1-3）完成 | `12-domain-review-checklist.md` | `domain-reviewer` | 不过 → 不允许进入实现 |
+| 实现阶段（4-5）完成 | `13-code-review-checklist.md` | `code-reviewer` | 不过 → 不允许告诉用户"完成" |
 
-跳过任一步 = 违规。详见 `13-review-subagent.md`。
+每个阶段都必须：**主 Agent 自查 → 对应 reviewer 复审 → 通过才放行**。
+
+看板 0 红标 + lint 0 errors + 测试 0 fail 是 code-reviewer 阶段的硬指标。
+
+跳过任一 reviewer = 违规。详见 `14-review-subagents.md`。
 
 ---
 
@@ -336,10 +342,10 @@ $SKILL_DIR/scripts/codeisall.sh status
 3. **首次使用时安装 codeisall 到项目目录**：
    - 检查 `<project>/.claude/skills/codeisall/` 是否存在
    - 不存在 → 把 codeisall skill 整个目录拷贝过去（包括 SKILL.md / scripts / templates / ...）
-   - 检查 `<project>/.claude/agents/code-reviewer.md` 是否存在
-   - 不存在 → 从 `.claude/skills/codeisall/templates/code-reviewer.md` 拷贝过去
-   - 拷贝后**明确告诉用户**："已安装 codeisall skill + 复审 subagent，请重启 Claude Code 会话让 subagent 生效"
-   - 详见 `13-review-subagent.md` 的"安装协议"段
+   - 检查 `<project>/.claude/agents/domain-reviewer.md` 和 `code-reviewer.md` 是否都存在
+   - 缺哪个就从 `.claude/skills/codeisall/templates/` 对应文件拷贝过去
+   - 拷贝后**明确告诉用户**："已安装 codeisall skill + 双 reviewer subagent（domain-reviewer / code-reviewer），请重启 Claude Code 会话让 subagent 生效"
+   - 详见 `14-review-subagents.md` 的"安装协议"段
 
 4. **启动 server**（如果需要看板）：
    - 新项目 → 创建目录 → `codeisall.sh /new/project`

@@ -265,10 +265,15 @@ Layer 2: 测试验证（pytest）
   └─ 知识覆盖率 100%（每条 invariant/command 有 @verifies）
   └─ 不通过 = 实现没兑现契约
 
-Layer 3: 结构验证（self-review + sub-agent review）
-  └─ self-review：12-self-review-checklist.md 10 类清单
-  └─ sub-agent review：独立 Agent 用同一 skill 复审
-  └─ 不通过 = 全局一致性出问题（跨文件、跨层、跨 ctx）
+Layer 3: 双门禁结构验证（domain-reviewer + code-reviewer）
+  ├─ 设计门禁（阶段 1-3 后）：
+  │   ├─ 主 Agent 自查：12-domain-review-checklist.md（A-F）
+  │   └─ domain-reviewer 复审：装饰器声明 / 聚合边界 / 不变量完整性
+  │   └─ 不过 = 不允许进入实现阶段
+  └─ 实现门禁（阶段 4-5 后）：
+      ├─ 主 Agent 自查：13-code-review-checklist.md（G-K）
+      └─ code-reviewer 复审：method body / 依赖方向 / ACL / 测试覆盖
+      └─ 不过 = 不允许告诉用户"完成"
 ```
 
-**告诉用户"完成"前，三层都必须通过。** 详见 `12-self-review-checklist.md` 和 `13-review-subagent.md`。
+**告诉用户"完成"前，三层都必须通过。** 详见 `12-domain-review-checklist.md`、`13-code-review-checklist.md` 和 `14-review-subagents.md`。
