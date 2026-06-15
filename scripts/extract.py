@@ -288,7 +288,12 @@ class Extractor:
                     "source_location": src_loc,
                 })
             elif kind == "business_rule":
-                self.business_rules.append({**kwargs, "source_location": src_loc})
+                # 类级 @business_rule（旧用法，标记为 orphan，让 lint 报错）
+                br = {**kwargs, "source_location": src_loc, "enforced_by": None}
+                # 兼容旧字段
+                if "aggregate" in kwargs and "involves" not in kwargs:
+                    br["involves"] = [kwargs["aggregate"]]
+                self.business_rules.append(br)
             elif kind == "domain_service":
                 cid = kwargs["context"]
                 # 收集类内的 public 方法作为 service 的 operations
@@ -484,8 +489,23 @@ class Extractor:
                     "aspect": kwargs.get("aspect", ""),
                     "context": kwargs.get("context", ""),
                     "aggregate": kwargs.get("aggregate", ""),
-                    "test_name": func.name,
+                    "test_name":func.name,
                     "source_location": {"file": file_rel, "line": func.lineno},
+                })
+            elif name == "business_rule":
+                # @business_rule 装在 @event_handler 函数上：守护代码就是这个 handler
+                try:
+                    kwargs = decorator_kwargs(dec)
+                except ValueError:
+                    continue
+                has_event_handler = any(
+                    decorator_call_name(d) == "event_handler" for d in func.decorator_list
+                )
+                self.business_rules.append({
+                    **kwargs,
+                    "source_location": {"file": file_rel, "line": dec.lineno},
+                    "enforced_by": f"{ctx_id}.{func.name}" if has_event_handler else None,
+                    "enforced_by_type": "event_handler" if has_event_handler else "orphan_function",
                 })
 
     # ---------- 最终组装 ----------

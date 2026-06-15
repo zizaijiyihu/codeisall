@@ -170,22 +170,19 @@ def print_diagnostics(diagnostics: list[Diagnostic], summary_extra: str = ""):
 
 @rule("business-rule-no-owner")
 def check_business_rule_owner(linter: Linter):
-    """Rule 1：每条 @business_rule 必须有承接的聚合根"""
+    """Rule（旧 schema 兼容）：检查 business_rule.aggregate 字段引用的聚合是否存在。
+    新 schema 用 involves: list[str] + enforced_by，由其他 lint 规则覆盖。
+    """
     aggregate_names = {item["owner"] for item in linter.locations.get("aggregate_root", [])}
     for loc in linter.locations.get("business_rule", []):
         kw = loc["kwargs"]
         target = kw.get("aggregate")
         if not target:
-            linter.emit("ERROR", "business-rule-no-owner", loc["file"], loc["line"],
-                f'@business_rule "{kw.get("rule", loc["owner"])}" 缺少 aggregate= 字段',
-                hint="给 @business_rule 添加 aggregate=\"<聚合根类名>\"")
-            continue
+            continue  # 新 schema 没有 aggregate 字段，跳过
         if target not in aggregate_names:
             linter.emit("ERROR", "business-rule-no-owner", loc["file"], loc["line"],
-                f'业务规则 "{kw.get("rule", "")}" 引用了 aggregate="{target}"，\n'
-                f'但代码中没有任何 @aggregate_root 声明叫 {target}。\n'
-                f'这条业务规则没有承接者，是悬空规则。',
-                hint=f'要么实现 {target} 聚合根，要么删除这条规则')
+                f'业务规则引用了 aggregate="{target}"，但代码中没有这个聚合根。',
+                hint=f'要么实现 {target} 聚合根，要么用新 schema involves=["..."]')
 
 
 @rule("aggregate-root-no-invariant")
@@ -489,11 +486,17 @@ def _get_layer_from_path(rel_parts: tuple) -> str | None:
 
 
 def _get_import_modules(tree: ast.AST) -> list[tuple[str, int]]:
-    """提取文件中所有 import 的模块名 + 行号"""
+    """提取文件中所有 import 的模块名 + 行号。
+    相对 import (from .x import y) 返回空字符串模块名（用 level 区分）。
+    """
     imports = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module:
-            imports.append((node.module, node.lineno))
+        if isinstance(node, ast.ImportFrom):
+            if node.level and node.level > 0:
+                # 相对 import：from . import x / from .x import y
+                imports.append(("", node.lineno))
+            elif node.module:
+                imports.append((node.module, node.lineno))
         elif isinstance(node, ast.Import):
             for alias in node.names:
                 imports.append((alias.name, node.lineno))
@@ -520,10 +523,17 @@ def check_domain_no_third_party(linter: Linter):
             continue
         for module, line in _get_import_modules(tree):
             top = module.split(".")[0]
-            # 允许：标准库白名单、ddd 装饰器库、同 ctx 内的 domain
+            # 允许：相对 import（同包内部）
+            if top == "":
+                continue
+            # 允许：标准库白名单
             if top in DOMAIN_ALLOWED_STDLIB:
                 continue
+            # 允许：ddd 装饰器库
             if top == "ddd":
+                continue
+            # 允许：shared/ 共享基础设施（按约定属于跨 ctx 公共能力）
+            if top == "shared":
                 continue
             if top == parts[0]:  # 同 ctx 内部 import
                 # 检查是否 import 了 infra/interface/application
@@ -630,6 +640,65 @@ def check_agent_no_domain_import(linter: Linter):
                     f"agents/ 不允许直接 import 领域系统：{module}\n"
                     f"  Agent 是独立 Actor，应通过 HTTP API / tool schema 与领域系统交互",
                     hint="在 agents/*/tools.py 里通过 httpx 调用 /api/* 接口，不直接 import 聚合根")
+
+
+# ============== Business Rule 强制守护（3 条新规则）==============
+# 核心哲学：声明性知识必须落到守护代码上
+# - 单聚合规则 = @invariant（不是 business_rule）
+# - 跨聚合规则 = @business_rule + 必须装在 @event_handler 或 @domain_service 上
+
+
+@rule("business-rule-must-cross-aggregates")
+def check_business_rule_crosses_aggregates(linter: Linter):
+    """Rule：@business_rule 必须涉及 ≥2 个聚合（involves 字段）。
+    单聚合的规则应该用 @invariant 而不是 @business_rule。
+    """
+    for br in linter.model.get("business_rules", []):
+        involves = br.get("involves") or ([br["aggregate"]] if br.get("aggregate") else [])
+        loc = br.get("source_location") or {}
+        file = loc.get("file", "?")
+        line = loc.get("line", 0)
+        rule_text = br.get("rule", "?")[:40]
+        if len(involves) < 2:
+            linter.emit("ERROR", "business-rule-must-cross-aggregates", file, line,
+                f'@business_rule "{rule_text}" 只涉及 {len(involves)} 个聚合：{involves}\n'
+                f'  业务规则的定义是"跨聚合"的，单聚合规则应改用 @invariant',
+                hint='把 involves=["A","B"] 改为多个聚合；或把它改成 @invariant 放在对应聚合根上')
+
+
+@rule("business-rule-must-attach-to-handler-or-service")
+def check_business_rule_enforcer(linter: Linter):
+    """Rule：@business_rule 必须装饰在 @event_handler 函数 或 @domain_service 方法上。
+    禁止独立的 business_rules.py + class XxxRule: pass 模式（悬空声明）。
+    """
+    for br in linter.model.get("business_rules", []):
+        loc = br.get("source_location") or {}
+        file = loc.get("file", "?")
+        line = loc.get("line", 0)
+        rule_text = br.get("rule", "?")[:40]
+        enforced_by_type = br.get("enforced_by_type")
+        if enforced_by_type not in ("event_handler", "domain_service_method"):
+            linter.emit("ERROR", "business-rule-must-attach-to-handler-or-service", file, line,
+                f'@business_rule "{rule_text}" 没有挂载到合法的守护代码上（当前 type={enforced_by_type}）\n'
+                f'  业务规则必须装在 @event_handler 函数 或 @domain_service 方法上',
+                hint='把规则放到实际执行它的 handler/service 上：'
+                     '@event_handler(...) @business_rule(...) def handler(...)')
+
+
+@rule("single-aggregate-rule-is-invariant")
+def check_single_aggregate_rule_advice(linter: Linter):
+    """Rule（INFO 级别建议）：发现旧 aggregate="X" 用法，建议迁移到 @invariant。
+    """
+    for br in linter.model.get("business_rules", []):
+        if "aggregate" in br and "involves" not in br:
+            loc = br.get("source_location") or {}
+            file = loc.get("file", "?")
+            line = loc.get("line", 0)
+            rule_text = br.get("rule", "?")[:40]
+            linter.emit("WARN", "single-aggregate-rule-is-invariant", file, line,
+                f'@business_rule "{rule_text}" 用了旧字段 aggregate="..."（单聚合）\n'
+                f'  单聚合规则建议改成 @invariant 放在聚合根上',
+                hint='移除 aggregate 字段，在对应聚合根的方法上加 @invariant')
 
 
 # ============== CLI 入口 ==============
