@@ -249,3 +249,26 @@ Claude:【没清旧 pending，又 PUT 新的，污染历史】
 ```
 
 正确做法：每完成一轮 → DELETE 旧 pending → 再 PUT 新 pending。
+
+---
+
+## 三层验证体系（重要）
+
+codeisall 验证不只是"跑 lint"，是三层立体保障：
+
+```
+Layer 1: 代码验证（codeisall-lint）
+  └─ 静态检查 15 条规则
+  └─ 不通过 = 不允许 commit
+
+Layer 2: 测试验证（pytest）
+  └─ 知识覆盖率 100%（每条 invariant/command 有 @verifies）
+  └─ 不通过 = 实现没兑现契约
+
+Layer 3: 结构验证（self-review + sub-agent review）
+  └─ self-review：12-self-review-checklist.md 10 类清单
+  └─ sub-agent review：独立 Agent 用同一 skill 复审
+  └─ 不通过 = 全局一致性出问题（跨文件、跨层、跨 ctx）
+```
+
+**告诉用户"完成"前，三层都必须通过。** 详见 `12-self-review-checklist.md` 和 `13-review-subagent.md`。

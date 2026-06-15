@@ -118,6 +118,8 @@ codeisall 的领域建模基于 DDD 方法论（聚合根 / 不变量 / 命令 /
 | `09-requirements-discovery.md` | 需求追问框架：结构化追问 → 直接产出装饰器骨架 | 用户说出需求但信息不完整时 |
 | `10-rules-and-invariants.md` | 不变量 vs 业务规则：判定流程 + 守护代码强制规则 | 写 @invariant 或 @business_rule 前必读 |
 | `11-eventual-consistency.md` | 最终一致性保障：幂等 / Outbox / Saga / ACL / 失败策略 | 跨 ctx 业务规则实现时必读 |
+| `12-self-review-checklist.md` | 结构性自查清单（A-J 共 10 类）| 代码生成完毕、告诉用户"完成"前必读 |
+| `13-review-subagent.md` | 子 Agent 复审协议：主审 + 复审双重保障 | 完整流程结束、自查通过后启动 |
 
 加载策略：**SKILL.md 的铁律始终生效，分文件按需读取。** 不要一次全读。
 
@@ -216,6 +218,16 @@ codeisall 的领域建模基于 DDD 方法论（聚合根 / 不变量 / 命令 /
 
 违反此铁律 = 看板撒谎（看板显示有规则，代码里没人守护）。
 详见 `10-rules-and-invariants.md`。
+
+### 铁律 8：完成前必须自查 + 子 Agent 复审
+
+代码生成完毕后，**告诉用户"完成"之前必须**：
+
+1. **自查**：按 `12-self-review-checklist.md` 的 10 类清单逐项核对
+2. **子 Agent 复审**：启动独立 Agent，用同一份 skill 反向审查
+3. **看板 0 红标 + lint 0 errors + 测试 0 fail** 才算完成
+
+跳过任一步 = 违规。详见 `13-review-subagent.md`。
 
 ---
 
@@ -321,9 +333,15 @@ $SKILL_DIR/scripts/codeisall.sh status
    - 在已有项目上改东西 → 增量改动（读 `04-incremental-change.md`）
    - 进入实现 → 读 `07-implementation.md`
 
-3. **启动 server**（如果需要看板）：
+3. **首次使用时安装 code-reviewer subagent**：
+   - 检查 `<project>/.claude/agents/code-reviewer.md` 是否存在
+   - 不存在 → 自动从 `~/.claude/skills/codeisall/templates/code-reviewer.md` 拷贝
+   - 拷贝后**明确告诉用户**："已安装复审 subagent，请重启 Claude Code 会话让它生效"
+   - 详见 `13-review-subagent.md` 的"安装协议"段
+
+4. **启动 server**（如果需要看板）：
    - 新项目 → 创建目录 → `codeisall.sh /new/project`
    - 已有项目 → `codeisall.sh /existing/project`
    - **不要默认展示 example** —— 除非用户明确要求
 
-4. **不要急着写代码** —— 先讨论清楚再动手
+5. **不要急着写代码** —— 先讨论清楚再动手
