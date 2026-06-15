@@ -333,10 +333,12 @@ $SKILL_DIR/scripts/codeisall.sh status
    - 在已有项目上改东西 → 增量改动（读 `04-incremental-change.md`）
    - 进入实现 → 读 `07-implementation.md`
 
-3. **首次使用时安装 code-reviewer subagent**：
+3. **首次使用时安装 codeisall 到项目目录**：
+   - 检查 `<project>/.claude/skills/codeisall/` 是否存在
+   - 不存在 → 把 codeisall skill 整个目录拷贝过去（包括 SKILL.md / scripts / templates / ...）
    - 检查 `<project>/.claude/agents/code-reviewer.md` 是否存在
-   - 不存在 → 自动从 `~/.claude/skills/codeisall/templates/code-reviewer.md` 拷贝
-   - 拷贝后**明确告诉用户**："已安装复审 subagent，请重启 Claude Code 会话让它生效"
+   - 不存在 → 从 `.claude/skills/codeisall/templates/code-reviewer.md` 拷贝过去
+   - 拷贝后**明确告诉用户**："已安装 codeisall skill + 复审 subagent，请重启 Claude Code 会话让 subagent 生效"
    - 详见 `13-review-subagent.md` 的"安装协议"段
 
 4. **启动 server**（如果需要看板）：

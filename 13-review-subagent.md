@@ -32,20 +32,31 @@
 ### 安装步骤（主 Agent 必须执行）
 
 ```bash
-# Step 1: 检查目标项目是否已有 code-reviewer subagent
 PROJECT_DIR="<用户项目目录>"
-SUBAGENT_FILE="$PROJECT_DIR/.claude/agents/code-reviewer.md"
+PROJECT_SKILL="$PROJECT_DIR/.claude/skills/codeisall"
+PROJECT_SUBAGENT="$PROJECT_DIR/.claude/agents/code-reviewer.md"
 
-if [ ! -f "$SUBAGENT_FILE" ]; then
-  # Step 2: 不存在 → 自动安装
+# Step 1: 检查 codeisall skill 是否已装到项目里
+if [ ! -f "$PROJECT_SKILL/SKILL.md" ]; then
+  mkdir -p "$PROJECT_DIR/.claude/skills"
+  # 找 skill 源（仓库 clone / 用户 skill 目录都行）
+  SKILL_SRC="$(寻找源 codeisall-skill 目录)"
+  cp -r "$SKILL_SRC" "$PROJECT_SKILL"
+  INSTALLED_SKILL=true
+fi
+
+# Step 2: 检查 subagent 是否已装
+if [ ! -f "$PROJECT_SUBAGENT" ]; then
   mkdir -p "$PROJECT_DIR/.claude/agents"
+  cp "$PROJECT_SKILL/templates/code-reviewer.md" "$PROJECT_SUBAGENT"
+  INSTALLED_SUBAGENT=true
+fi
 
-  # codeisall skill 自带 subagent 模板
-  SKILL_DIR="$(找到 codeisall skill 安装目录)"
-  cp "$SKILL_DIR/templates/code-reviewer.md" "$SUBAGENT_FILE"
-
-  # Step 3: 通知用户重启
-  echo "✓ 已在 $PROJECT_DIR/.claude/agents/code-reviewer.md 安装 codeisall 复审子 agent"
+# Step 3: 通知用户
+if [ "$INSTALLED_SKILL" = "true" ] || [ "$INSTALLED_SUBAGENT" = "true" ]; then
+  echo "✓ codeisall 已安装到项目："
+  [ "$INSTALLED_SKILL" = "true" ] && echo "  - skill: $PROJECT_SKILL"
+  [ "$INSTALLED_SUBAGENT" = "true" ] && echo "  - subagent: $PROJECT_SUBAGENT"
   echo ""
   echo "⚠️  请重启 Claude Code 会话让 subagent 生效（关闭当前会话，重新打开）"
   echo ""
@@ -55,11 +66,21 @@ fi
 
 ### 找 skill 安装目录
 
-```python
-# codeisall skill 可能在两个位置（按优先级）：
-# 1. ~/.claude/skills/codeisall/        ← 用户已安装的 skill
-# 2. <项目根>/codeisall-skill/          ← 开发期或仓库自带
+codeisall skill 装在 **当前项目内**（跟 subagent 同级）：
+
 ```
+<project>/.claude/skills/codeisall/
+<project>/.claude/agents/code-reviewer.md
+```
+
+主 Agent 第一次启动 codeisall 时，把 skill 整个目录拷贝到项目 `.claude/skills/codeisall/`，
+同时把 `templates/code-reviewer.md` 拷贝到 `.claude/agents/code-reviewer.md`。
+
+skill 的源在哪里？两个可能位置（首次安装时按优先级查找）：
+- 仓库自带：`<某处>/codeisall-skill/`（如果用户 clone 了仓库）
+- 用户已装：`~/.claude/skills/codeisall/`（如果是 skill 包安装方式）
+
+**不管源在哪，目标永远是 `<project>/.claude/skills/codeisall/`**。
 
 ### 安装后必须做的事
 
