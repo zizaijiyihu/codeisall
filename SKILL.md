@@ -116,6 +116,8 @@ codeisall 的领域建模基于 DDD 方法论（聚合根 / 不变量 / 命令 /
 | `07-implementation.md` | 实现阶段流程（设计完成后填 body / 写 infra / 写 interface） | 用户说"开始实现 / 写代码 / 填充逻辑" |
 | `08-agent-architecture.md` | Agent 架构：与领域的关系、两类 Agent、装饰器、视图规则 | 涉及 Agent 设计 / @agent 装饰器 / Agent 视图 |
 | `09-requirements-discovery.md` | 需求追问框架：结构化追问 → 直接产出装饰器骨架 | 用户说出需求但信息不完整时 |
+| `10-rules-and-invariants.md` | 不变量 vs 业务规则：判定流程 + 守护代码强制规则 | 写 @invariant 或 @business_rule 前必读 |
+| `11-eventual-consistency.md` | 最终一致性保障：幂等 / Outbox / Saga / ACL / 失败策略 | 跨 ctx 业务规则实现时必读 |
 
 加载策略：**SKILL.md 的铁律始终生效，分文件按需读取。** 不要一次全读。
 
@@ -200,6 +202,20 @@ codeisall 的领域建模基于 DDD 方法论（聚合根 / 不变量 / 命令 /
 - **测试不过不算完成** —— 跟 lint 一样是硬门禁
 
 详细策略见 `07-implementation.md` 的"测试策略"段。
+
+### 铁律 7：声明性知识必须落到守护代码上
+
+装饰器位置 = 守护代码位置，**物理上不可分离**。
+
+- `@invariant` 必须装在聚合根的方法_xxx 方法）
+- `@vo_constraint` 必须装在值对象类上
+- `@business_rule` 必须装在 `@event_handler` 函数上 或 `@domain_service` 方法上
+  - involves 必须 ≥ 2 个聚合（单聚合规则改用 @invariant）
+  - 多步规则用 `id="BR-xxx"` 关联同一规则
+- **禁止独立的 business_rules.py 文件**（空类 + 装饰器 = 假知识）
+
+违反此铁律 = 看板撒谎（看板显示有规则，代码里没人守护）。
+详见 `10-rules-and-invariants.md`。
 
 ---
 

@@ -151,19 +151,51 @@ integration 取值：`event` / `api` / `shared-db`
 
 | 装饰器 | 必填参数 | 可选参数 | 说明 |
 |--------|---------|----------|------|
-| `@business_rule` | rule, source, aggregate, timing | — | 业务规则溯源 |
+| `@business_rule` | rule, source, involves, timing | id, steps | 跨聚合业务规则（详见 `10-rules-and-invariants.md`） |
+
+**关键约束**：
+- `involves: list[str]` 必须 ≥ 2 个聚合（单聚合规则用 @invariant，不用这个）
+- **必须装饰在 `@event_handler` 函数上 或 `@domain_service` 方法上**
+- **禁止独立的 business_rules.py + class XxxRule: pass 模式**（lint 报错）
 
 ```python
-# business_rules.py
-from ddd.decorators import business_rule
-
+# 跨 ctx 业务规则 → 装在 @event_handler 上
 @business_rule(
-    rule="满 200 减 20",
-    source="市场部文档 v2.3",
-    aggregate="Order",
-    timing="place() 前计算折扣",
+    rule="下单送积分",
+    source="营销规则",
+    involves=["Order", "PointsAccount"],
+    timing="消费 OrderPlaced 事件时",
 )
-class FullMinus: pass
+@event_handler(event="OrderPlaced", from_context="order", ...)
+def on_order_placed(payload, repo):
+    # 守护代码就在这里
+    ...
+
+# 同 ctx 跨聚合业务规则 → 装在 @domain_service 方法上
+@domain_service(context="order", operates_on=["Order", "Promotion"])
+class PricingService:
+
+    @business_rule(
+        rule="满 200 减 20",
+        source="市场部 v2.3",
+        involves=["Order", "Promotion"],
+        timing="计算最终价时",
+    )
+    def calculate_final_price(self, order, promotions):
+        # 守护代码就在这里
+        ...
+
+# 多步 saga 规则 → 用 id 关联多个 handler
+@business_rule(
+    id="BR-001",
+    rule="退款流程",
+    involves=["Order", "Payment", "Refund"],
+    steps=["RefundRequested", "PaymentRefunded", "OrderCancelled"],
+    source="客服退款政策",
+    timing="多步事件链",
+)
+@event_handler(event="RefundRequested", from_context="customer_service")
+def on_refund_requested(payload): ...
 ```
 
 ## 共享基础设施

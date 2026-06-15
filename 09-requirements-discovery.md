@@ -66,10 +66,15 @@
 - "XX 做完之后，哪些东西就不能再动了？"
 - "有没有'一旦 A 发生，B 就被锁死'的情况？"
 - "几个数据之间有没有'必须对得上'的关系？"
+- "这条规矩跟几个不同的东西都有关系？"  ← 关键判定：1 个 vs 多个
 ```
 
-**得到答案后 AI 内部翻译**：
+**得到答案后 AI 内部判定（详见 10-rules-and-invariants.md）**：
+- 涉及 **1 个**业务对象 → `@invariant` 写在该聚合根上
+- 涉及 **≥2 个**业务对象 → `@business_rule` 写在守护代码上（handler 或 service）
+
 ```python
+# 单聚合 → @invariant
 @invariant(description="已提交不可编辑",
     formal="status ≠ 'draft' → content frozen",
     fields=["status", "content"])
