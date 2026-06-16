@@ -235,6 +235,24 @@ codeisall 把 Reviewer 拆成**两个 subagent**，各管一段：
 
 跳过任一 reviewer = 违规。详见 `14-review-subagents.md`。
 
+### 铁律 9：前后端两个端口必须同时活
+
+codeisall 看板由两个服务支撑，**任何动作前先确认双活**：
+
+| 端口 | 进程 | 谁来访问 |
+|---|---|---|
+| 5171 | vite dev server | **人**（浏览器唯一入口） |
+| 8502 | uvicorn FastAPI | Claude API 调用 + vite proxy |
+
+**铁律细则**：
+
+1. 任何 codeisall 操作前先 `curl http://localhost:5171/` + `curl http://localhost:8502/api/source`，确认双 200
+2. 重启 8502 时 5171 经常被连带杀掉（同 shell 进程组），**重启后立即验证 5171 还在**
+3. 启动必须用 `nohup ... > /tmp/codeisall-{api,vite}.log 2>&1 &`，禁止前台跑
+4. `live: false` 也算异常（看板会回退到 demo_model.json，不反映真实代码）
+
+跳过双活检查就操作 = 用户可能看到旧版本/空看板而不自知。详见 `01-server-and-api.md` 的"健康检查"段。
+
 ---
 
 ## 两种使用模式

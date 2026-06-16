@@ -67,13 +67,22 @@ EXAMPLE_DIR=/path/to/new-project python3 -m uvicorn server:app --port 8502 \
 
 vite (5171) 不用动 —— 它通过 proxy 自动跟新 server 通信。
 
-### 健康检查
+### 健康检查（**两个端口都要活**）
+
+> **铁律：前端 5171 + 后端 8502 必须同时活着，缺一不可。**
+> 任何动作前先查这两个端口，不要假设它们还在跑。
 
 ```bash
-curl -sf http://localhost:8502/api/source
+# 一次性查两个端口
+curl -sf -o /dev/null -w "5171(前端): %{http_code}\n" http://localhost:5171/ && \
+curl -sf -o /dev/null -w "8502(后端): %{http_code}\n" http://localhost:8502/api/source
+
+# 期望输出：
+#   5171(前端): 200
+#   8502(后端): 200
 ```
 
-返回 JSON：
+后端详细健康（`/api/source`）返回：
 
 ```json
 {
@@ -84,7 +93,25 @@ curl -sf http://localhost:8502/api/source
 }
 ```
 
-**`live: false` 是异常** —— 看板会回退到本地 demo_model.json，不反映真实代码。出现 false 说明 `EXAMPLE_DIR` 路径错了或 extract.py import 失败。
+### 故障矩阵（必须按这个判断，不要乱猜）
+
+| 5171 | 8502 | 现象 | 处理 |
+|---|---|---|---|
+| ❌ 000 | ✅ 200 | 用户访问看板 → "无法连接" | 启动 vite：`cd <codeisall-skill>/viewer && nohup npx vite > /tmp/codeisall-vite.log 2>&1 &` |
+| ✅ 200 | ❌ 000 | 看板能开但永远转圈/空 | 启动 server：`cd <codeisall-skill>/scripts && EXAMPLE_DIR=... nohup python3 -m uvicorn server:app --port 8502 --reload --reload-dir . > /tmp/codeisall-api.log 2>&1 &` |
+| ❌ 000 | ❌ 000 | 全挂 | 两个都起 |
+| ✅ 200 | `live: false` | 看板有数据但是 demo（不是用户项目） | 检查 EXAMPLE_DIR 路径；检查 extract.py import |
+
+### 进程托管纪律
+
+- **必须用 `nohup ... &`** 启动，不要前台跑（被 shell 退出会带走进程）
+- **必须重定向到 `/tmp/codeisall-{api,vite}.log`**，故障时直接看这两个文件
+- 重启后端时 vite 容易被连带杀掉（同 shell 子进程组），重启 API 后**立即 curl 5171 验证**，没了就重启 vite
+- 切项目（改 EXAMPLE_DIR）时只重启后端，**不要碰 vite**
+
+`--reload --reload-dir .` 让 uvicorn 监听 `scripts/` 下的 .py 改动自动重启，
+**所以改 `extract.py` / `codeisall_lint.py` / `server.py` 不用手动 kill。**
+但改完 0.5 秒内重新 curl 8502 验证 reload 成功（如果文件有语法错，reload 会失败导致 server 死掉）。
 
 ## API 列表
 
