@@ -138,7 +138,10 @@ class Extractor:
         self.domain_services: dict[str, list] = defaultdict(list)  # ctx_id -> [services]
         self.events_published: dict[str, str] = {}        # event_name -> "AggregateRoot.method"
         self.agents: list[dict] = []                         # agent 定义列表
-        self.test_verifications: list[dict] = []               # @verifies / @verifies_command 声明
+        self.test_verifications: list[dict] = []               # @verifies / @verifies_command / @verifies_query 声明
+        # CQRS Query 侧（application 层）
+        self.query_handlers: dict[str, list[dict]] = defaultdict(list)  # ctx_id -> [query_handler]
+        self.view_models: dict[str, list[dict]] = defaultdict(list)     # ctx_id -> [view_model]
 
     def run(self) -> dict:
         for py_file in sorted(self.root.rglob("*.py")):
@@ -309,6 +312,17 @@ class Extractor:
             elif kind == "anticorruption_layer":
                 # 暂不渲染，预留
                 pass
+            elif kind == "view_model":
+                # CQRS 读模型：装饰在 application/views/ 下的类上
+                cid = kwargs.get("__ctx__") or ctx_id
+                if cid:
+                    self.view_models[cid].append({
+                        "name": kwargs.get("name", cls.name),
+                        "class_name": cls.name,
+                        "fields": kwargs.get("fields", []),
+                        "source": kwargs.get("source", ""),
+                        "source_location": src_loc,
+                    })
             elif kind == "agent":
                 # Agent 定义：收集 tools 和 constraints 需要后续从类内装饰器获取
                 agent_entry = {
@@ -478,6 +492,38 @@ class Extractor:
                     "test_name":func.name,
                     "source_location": {"file": file_rel, "line": func.lineno},
                 })
+            elif name == "verifies_query":
+                try:
+                    kwargs = decorator_kwargs(dec)
+                except ValueError:
+                    continue
+                self.test_verifications.append({
+                    "type": "query",
+                    "query": kwargs.get("query", ""),
+                    "aspect": kwargs.get("aspect", ""),
+                    "context": kwargs.get("context", ""),
+                    "test_name": func.name,
+                    "source_location": {"file": file_rel, "line": func.lineno},
+                })
+            elif name == "query_handler":
+                # CQRS 查询用例：装饰在 application/queries/ 下的函数上
+                try:
+                    kwargs = decorator_kwargs(dec)
+                except ValueError:
+                    continue
+                # 推断 ctx：装饰器参数显式 __ctx__ 优先，否则用文件所在 ctx
+                cid = kwargs.get("__ctx__") or ctx_id
+                if cid:
+                    self.query_handlers[cid].append({
+                        "name": kwargs.get("name", func.name),
+                        "function_name": func.name,
+                        "returns": kwargs.get("returns", ""),
+                        "visibility": kwargs.get("visibility", ""),
+                        "reads_from": kwargs.get("reads_from", [cid]),
+                        "backed_by": kwargs.get("backed_by", "read_model"),
+                        "description": kwargs.get("description", ""),
+                        "source_location": {"file": file_rel, "line": dec.lineno},
+                    })
             elif name == "business_rule":
                 # @business_rule 装在 @event_handler 函数上：守护代码就是这个 handler
                 try:
@@ -543,6 +589,8 @@ class Extractor:
                 "responsibility": meta["responsibility"],
                 "ubiquitous_language": self.terms.get(ctx_id, []),
                 "aggregates": aggs,
+                "query_handlers": self.query_handlers.get(ctx_id, []),
+                "view_models": self.view_models.get(ctx_id, []),
                 "source_location": meta.get("source_location"),
             })
 

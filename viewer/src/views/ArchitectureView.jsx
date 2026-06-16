@@ -80,7 +80,15 @@ function deriveChips(ctx, model, layerKey) {
       sourceEvent: r.event,
       file: `${ctx.id}_ctx/application/handlers/on_${r.event.toLowerCase()}.py`,
     }));
-    return [...commands, ...handlers];
+    // CQRS 查询侧 —— application/queries/
+    const queries = (ctx.query_handlers || []).map(q => ({
+      name: q.name + '()',
+      type: 'query',
+      tag: 'query',
+      desc: q.visibility ? `🔒 ${q.visibility.slice(0, 40)}${q.visibility.length > 40 ? '...' : ''}` : `→ ${q.returns}`,
+      file: q.source_location?.file || `${ctx.id}_ctx/application/queries/${q.name}.py`,
+    }));
+    return [...commands, ...handlers, ...queries];
   }
   if (layerKey === 'domain') {
     const chips = [];
@@ -118,6 +126,14 @@ function deriveChips(ctx, model, layerKey) {
       file: `${ctx.id}_ctx/infra/repository.py`,
     }));
     chips.push({ name: 'EventPublisher', type: 'infra', tag: 'pub', desc: '事件发布', uses: ['event_bus'], file: `${ctx.id}_ctx/infra/publisher.py` });
+    // CQRS 读模型 —— 每个 @view_model 一个 chip
+    (ctx.view_models || []).forEach(vm => chips.push({
+      name: vm.name,
+      type: 'readmodel',
+      tag: 'readmodel',
+      desc: `读模型：${vm.source || ''}`,
+      file: vm.source_location?.file || `${ctx.id}_ctx/application/views/${vm.name.toLowerCase()}.py`,
+    }));
     const aclSources = model.relations
       .filter(r => r.to === ctx.id && r.relation_type === 'anticorruption-layer')
       .map(r => r.from);

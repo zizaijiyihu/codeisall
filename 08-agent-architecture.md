@@ -89,13 +89,36 @@ your-project/
     description="将内容写入周报草稿", # 工具描述
     direction="command",            # query | command
     target_ctx="weekly_report",     # command 时：操作哪个 ctx
-    source="邮件系统",              # query 时：数据来自哪里
+    source="邮件系统",              # query 时：数据来自哪里（外部源）
+    maps_to="submit_report",        # 可选：对应 application 层的 command/query handler 名字
 )
 ```
 
 `direction` 按是否改变状态分类：
 - `query`：获取信息，不改变任何状态（不管数据来自外部还是领域系统）
 - `command`：改变系统状态
+
+#### query 工具的映射规则
+
+如果 `direction="query"` 且数据来自领域系统（不是外部 API），**必须**通过 `maps_to` 指向 application 层的 `@query_handler`：
+
+```python
+# ✅ 正确：query 工具映射到 application 层的 query handler
+@agent_tool(
+    name="read_my_reports",
+    direction="query",
+    target_ctx="weekly_report",
+    maps_to="get_my_reports",       # ← 对应 weekly_report_ctx/application/queries/get_my_reports.py
+)
+
+# ❌ 错误：query 工具直接 SQL，绕过 application 层
+@agent_tool(name="read_my_reports", direction="query")
+async def read_reports():
+    return db.execute("SELECT * FROM reports WHERE ...")
+```
+
+由 lint 规则 `agent-query-tool-needs-handler` 强制（warning 级，因为外部源 query 工具是允许的）。
+详见 02-decorator-vocabulary.md 的"CQRS 查询侧"段。
 
 ### @agent_skill — 技能/提示词文件（Coding Agent 专用）
 

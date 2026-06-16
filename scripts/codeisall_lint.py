@@ -680,6 +680,88 @@ def check_single_aggregate_rule_advice(linter: Linter):
                 hint='移除 aggregate 字段，在对应聚合根的方法上加 @invariant')
 
 
+# ============== CQRS 查询侧规则（3 条）==============
+
+@rule("query-not-in-domain")
+def check_query_not_in_domain(linter: Linter):
+    """Rule：domain/ 层不允许出现 @query_handler 或 @view_model。
+
+    CQRS 的 query 路径属于 application 层，不属于 domain。
+    domain 只管写入规则（不变量 + 命令），查询用 read model + query handler。
+    """
+    for kind in ("query_handler", "view_model"):
+        for loc in linter.locations.get(kind, []):
+            file = loc.get("file", "")
+            line = loc.get("line", 0)
+            parts = Path(file).parts
+            # 是否在某个 ctx 的 domain/ 下
+            if len(parts) >= 2 and parts[0].endswith("_ctx") and parts[1] == "domain":
+                linter.emit("ERROR", "query-not-in-domain",
+                    file, line,
+                    f"@{kind} 不能出现在 domain/ 层：{file}\n"
+                    f"  CQRS 查询路径属于 application 层，domain 只管写入规则",
+                    hint=f"把 @{kind} 移到 <ctx>_ctx/application/queries/ 或 application/views/")
+
+
+@rule("query-handler-needs-view-model")
+def check_query_handler_returns_view_model(linter: Linter):
+    """Rule：@query_handler.returns 必须对应一个 @view_model。
+
+    防止"query 返回个裸 dict / list[Aggregate]"这种破坏 CQRS 分离的反模式。
+    """
+    # 收集所有 view_model 名字
+    view_names = set()
+    for loc in linter.locations.get("view_model", []):
+        kw = loc.get("kwargs", {})
+        n = kw.get("name") or loc.get("owner")
+        if n:
+            view_names.add(n)
+
+    for loc in linter.locations.get("query_handler", []):
+        kw = loc.get("kwargs", {})
+        returns = kw.get("returns", "")
+        if not returns:
+            linter.emit("ERROR", "query-handler-needs-view-model",
+                loc.get("file", ""), loc.get("line", 0),
+                f"@query_handler 缺少 returns 字段",
+                hint='returns="<ViewModelName>"，必须对应一个 @view_model 类')
+            continue
+        if returns not in view_names:
+            linter.emit("ERROR", "query-handler-needs-view-model",
+                loc.get("file", ""), loc.get("line", 0),
+                f"@query_handler.returns='{returns}' 找不到对应的 @view_model",
+                hint=f'在 application/views/ 下创建 @view_model(name="{returns}", ...) 类')
+
+
+@rule("agent-query-tool-needs-handler")
+def check_agent_query_tool_has_handler(linter: Linter):
+    """Rule：@agent_tool(direction="query") 必须对应一个 @query_handler。
+
+    Agent 的 query 工具应映射到 application 层的 query handler，
+    否则 codeisall 的"代码即知识"在 Q 侧出现空洞（Agent 能查的东西没有领域声明）。
+    """
+    query_names = set()
+    for loc in linter.locations.get("query_handler", []):
+        kw = loc.get("kwargs", {})
+        n = kw.get("name")
+        if n:
+            query_names.add(n)
+
+    for loc in linter.locations.get("agent_tool", []):
+        kw = loc.get("kwargs", {})
+        if kw.get("direction") != "query":
+            continue
+        # tool 通过 calls 字段或 name 字段对应到 query
+        # 约定：@agent_tool(direction="query", maps_to="<query_handler_name>")
+        maps_to = kw.get("maps_to") or kw.get("name", "")
+        if maps_to and maps_to not in query_names:
+            linter.emit("WARN", "agent-query-tool-needs-handler",
+                loc.get("file", ""), loc.get("line", 0),
+                f"@agent_tool(direction='query') maps_to='{maps_to}' 找不到对应的 @query_handler",
+                hint='在 <ctx>_ctx/application/queries/ 下新增 @query_handler(name="...")，'
+                     '或在 agent_tool 上加 maps_to 字段指向已存在的 query handler 名字')
+
+
 # ============== CLI 入口 ==============
 
 def main(argv: list[str]) -> int:

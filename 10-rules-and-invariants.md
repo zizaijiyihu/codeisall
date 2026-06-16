@@ -182,3 +182,33 @@ def test_full_minus_applied(): ...
 > **不变量 = 单聚合内的永真规则，由聚合根命令方法守护。**
 > **业务规则 = 跨聚合的触发式规则，由 @event_handler 或 @domain_service 守护。**
 > **声明的装饰器位置 = 实现的代码位置，物理上不可分离。**
+
+## 附：为什么 query 不在 domain 层
+
+不变量 / 业务规则都是**写入侧**的规则——只有写入才会破坏它们，读取不会。
+
+CQRS 的查询侧是 application 层的关注点分离：
+
+| | 写（command） | 读（query） |
+|---|---|---|
+| 会破坏不变量吗 | 会 | 不会 |
+| 是否触发事件 | 是 | 否 |
+| 是否需要事务 | 是 | 否 |
+| 装饰器所在层 | domain + application | **仅 application** |
+
+### 那"只能看自己团队的周报"这种规则放哪？
+
+这是**业务可见性规则**，是第三类业务规则（既不是 invariant，也不是 business_rule）：
+
+```python
+@query_handler(
+    name="get_my_reports",
+    visibility="只能看 user.team_id == requester.team_id 的周报",
+    ...
+)
+def handle(...): ...
+```
+
+它在 `@query_handler.visibility` 字段声明，**不要写成 @invariant**（不变量不该跟"谁在调用"耦合）。
+
+详见 02-decorator-vocabulary.md 的"CQRS 查询侧"段。

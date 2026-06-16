@@ -24,13 +24,13 @@ export default function AgentView({ model }) {
   return (
     <div className="agent-view">
       {agents.map((agent) => (
-        <AgentCard key={agent.id} agent={agent} contexts={model.contexts} />
+        <AgentCard key={agent.id} agent={agent} contexts={model.contexts} model={model} />
       ))}
     </div>
   );
 }
 
-function AgentCard({ agent, contexts }) {
+function AgentCard({ agent, contexts, model }) {
   const queryTools = (agent.tools || []).filter(t => t.direction === 'query');
   const commandTools = (agent.tools || []).filter(t => t.direction === 'command');
   // 兼容旧的 inbound/outbound
@@ -38,6 +38,14 @@ function AgentCard({ agent, contexts }) {
   const relatedCtxNames = (agent.operates_on || []).map(ctxId => {
     const ctx = (contexts || []).find(c => c.id === ctxId);
     return ctx ? ctx.name : ctxId;
+  });
+
+  // 索引：query_handler_name → {ctx_id, visibility, returns}
+  const queryHandlerIndex = {};
+  (contexts || []).forEach(ctx => {
+    (ctx.query_handlers || []).forEach(qh => {
+      queryHandlerIndex[qh.name] = { ctx_id: ctx.id, ...qh };
+    });
   });
 
   return (
@@ -76,14 +84,26 @@ function AgentCard({ agent, contexts }) {
         <div className="agent-tools-section">
           <div className="agent-tools-title">🔍 查询工具（不改状态）</div>
           <div className="agent-tools-list">
-            {queryTools.map((tool, i) => (
-              <div key={i} className="agent-tool-item inbound">
-                <span className="agent-tool-name">{tool.name}</span>
-                <span className="agent-tool-desc">{tool.description}</span>
-                {tool.source && <span className="agent-tool-source">← {tool.source}</span>}
-                {tool.data_source && <span className="agent-tool-source">← {tool.data_source}</span>}
-              </div>
-            ))}
+            {queryTools.map((tool, i) => {
+              const handler = tool.maps_to ? queryHandlerIndex[tool.maps_to] : null;
+              return (
+                <div key={i} className="agent-tool-item inbound">
+                  <span className="agent-tool-name">{tool.name}</span>
+                  <span className="agent-tool-desc">{tool.description}</span>
+                  {tool.source && <span className="agent-tool-source">← {tool.source}</span>}
+                  {tool.data_source && <span className="agent-tool-source">← {tool.data_source}</span>}
+                  {handler && (
+                    <span className="agent-tool-mapping" title={handler.visibility || ''}>
+                      → @query_handler {handler.ctx_id}.{tool.maps_to}
+                      {handler.visibility && <span className="agent-tool-visibility">🔒 {handler.visibility}</span>}
+                    </span>
+                  )}
+                  {tool.maps_to && !handler && (
+                    <span className="agent-tool-mapping missing">⚠ maps_to={tool.maps_to} 找不到对应 @query_handler</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

@@ -198,6 +198,96 @@ from ddd.decorators import shared_infrastructure
 class EventBus: ...
 ```
 
+## CQRS 查询侧（application 层装饰器）
+
+> **重要**：查询路径**不属于 domain 层**，CQRS 是 application 层的关注点分离。
+> domain 层只管写入规则（不变量 + 命令）；查询用 read model + query handler。
+> 详见 `10-rules-and-invariants.md` 的"为什么 query 不在 domain 层"段。
+
+| 装饰器 | 必填参数 | 可选参数 | 装饰对象 | 说明 |
+|--------|---------|----------|---------|------|
+| `@query_handler` | name, returns, reads_from, backed_by | visibility, description | 函数 | 查询用例（一个查询入口） |
+| `@view_model` | name, fields, source | description | dataclass 类 | 读模型（查询返回的形态） |
+| `@verifies_query` | query, aspect, context | description | 测试函数 | 声明测试验证哪个 query 的哪一面 |
+
+### `@view_model` — 读模型
+
+```python
+# order_ctx/application/views/ot_view.py
+from dataclasses import dataclass
+from ddd import view_model
+
+@view_model(
+    name="OrderListView",
+    fields=[
+        {"name": "order_id", "type": "str", "description": "订单号"},
+        {"name": "total_amount", "type": "Decimal"},
+        {"name": "status", "type": "str"},
+    ],
+    source="read_model.orders_view",   # 数据来源（read model 表名或聚合投影）
+    description="客户订单列表视图，按下单时间倒序",
+)
+@dataclass(frozen=True)
+class OrderListView:
+    order_id: str
+    total_amount: object
+    status: str
+```
+
+### `@query_handler` — 查询用例
+
+```python
+# order_ctx/application/queries/list_orders_by_customer.py
+from ddd import query_handler
+from ..views.order_list_view import OrderListView
+
+@query_handler(
+    name="list_orders_by_customer",
+    returns="OrderListView",          # 必须对应一个已声明的 @view_model
+    visibility="只能查询 requester.customer_id == query.customer_id 的订单",  # 业务可见性
+    reads_from=["order_ctx"],         # 读哪些 ctx（跨 ctx 可写多个）
+    backed_by="read_model",           # "read_model" | "aggregate_repo"
+    description="按客户 ID 列出订单，按下单时间倒序",
+)
+def handle(query, requester) -> list[OrderListView]:
+    """visibility 检查 + 读 read model + 映射到 view"""
+    ...
+```
+
+### `@verifies_query` — 查询测试
+
+```python
+@verifies_query(
+    query="list_orders_by_customer",
+    aspect="visibility",   # visibility | filter | shape
+    context="order",
+    description="客户尝试查别人的订单时应被拒绝",
+)
+def test_cannot_see_other_customer_orders():
+    ...
+```
+
+aspect 三种：
+- `visibility` — 验证可见性规则（谁能看什么）
+- `filter` — 验证过滤逻辑（按时间、状态等）
+- `shape` — 验证返回 view model 的字段形态
+
+### 目录约定
+
+```
+{ctx}_ctx/
+├── domain/                          ← 写入规则（不变量 + 命令）
+└── application/
+    ├── handlers/   on_xxx.py         ← Command Handler（已有）
+    ├── queries/    list_xxx.py       ← Query Handler（新增）
+    └── views/      xxx_view.py       ← ReadModel / ViewModel（新增）
+```
+
+### 关联
+
+- `@agent_tool(direction="query", maps_to="<query_handler_name>")` 把 Agent 工具映射到对应的 query handler
+- lint 规则 `query-not-in-domain`、`query-handler-needs-view-model`、`agent-query-tool-needs-handler` 强制守护这些约定
+
 ## 铁律重申
 
 1. **所有参数必须字面量**（字符串、列表、数字），不能用变量、f-string、函数调用

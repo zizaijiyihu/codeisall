@@ -31,6 +31,11 @@ domain-reviewer ✓ → 实现 body + 写 infra + 写测试 → ★这里自查�
   └─ lint agent-no-domain-import
 □ @domain_service 无状态（不带 dataclass 字段）
   └─ lint domain-service-stateless
+□ @query_handler / @view_model 不出现在 domain/ 层
+  └─ lint query-not-in-domain
+□ application/queries/ 不 import domain 聚合根（query 走 read model）
+□ @query_handler.returns 必须对应一个 @view_model
+  └─ lint query-handler-needs-view-model
 ```
 
 ### H. 实现完整性
@@ -55,6 +60,8 @@ domain-reviewer ✓ → 实现 body + 写 infra + 写测试 → ★这里自查�
 □ 每条 @invariant 都有对应 @verifies 测试
 □ 每个 @command 的 pre/post/emits/fails 都有 @verifies_command 测试
   - 不只测 happy path（pre/post），也要测异常路径（fails）
+□ 每个 @query_handler 的 visibility / filter / shape 都有 @verifies_query 测试
+ sibility 是 query 的核心规则，必须有反例测试（无权限访问应被拒绝）
 □ 测试有真实断言（不是 assert True 凑数）
 □ pytest 全过（0 failures）
 □ 看板"知识地图"无 ⚠️ 未覆盖标记

@@ -92,6 +92,62 @@ class SubmitReportHandler:
 - Handler 编排（获取依赖 → 调聚合方法 → 持久化 → 发事件），不写业务逻辑
 - 依赖注入 Repository / Publisher 接口，不 import 具体实现类
 
+### Step 3.5：application 层 — Query Handler + View Model（CQRS 查询侧）
+
+**只有项目有查询用例时才需要**。如果只有写入流程（Command），跳过本步。
+
+CQRS 查询侧装饰器**全部在 application 层**，domain 层不出现 query 相关装饰器。
+
+```python
+# application/views/report_list_view.py（新建）
+from dataclasses import dataclass
+from ddd import view_model
+
+@view_model(
+    name="ReportListView",
+    fields=[
+        {"name": "report_id", "type": "str"},
+        {"name": "title", "type": "str"},
+        {"name": "submitted_at", "type": "datetime"},
+    ],
+    source="read_model.reports_by_team",
+)
+@dataclass(frozen=True)
+class ReportListView:
+    report_id: str
+    title: str
+    submitted_at: object
+```
+
+```python
+# application/queries/get_my_reports.py（新建）
+from ddd import query_handler
+from ..views.report_list_view import ReportListView
+
+@query_handler(
+    name="get_my_reports",
+    returns="ReportListView",
+    visibility="只能看 user.team_id == requester.team_id 的周报",
+    reads_from=["weekly_report_ctx"],
+    backed_by="read_model",
+)
+def handle(query, requester) -> list[ReportListView]:
+    # 1. 可见性检查
+    if not requester.can_see_team(query.team_id):
+        raise PermissionDenied(f"cannot see team {query.team_id}")
+    # 2. 读 read model（不走聚合根）
+    rows = read_model.reports_by_team.where(team_id=query.team_id).order_by("-submitted_at")
+    # 3. 映射到 view model
+    return [ReportListView(**r) for r in rows]
+```
+
+**约束**：
+- @query_handler 装饰函数（不是类），function name 通常叫 `handle`
+- @view_model 装饰 dataclass 类，类名 = @view_model.name
+- query handler **不能 import domain**（聚合是写入用的，读用 read model）
+- visibility 字段不为空时，body 必须真的兑现这个规则（lint 查不到，由 code-reviewer 审）
+- 跨 ctx 查询 → `reads_from=["ctx_a", "ctx_b"]`，意味着 read model 是物化视图（不能用聚合 join）
+
 ### Step 4：infrastructure 层 — Adapter 实现
 
 **此步骤需要向用户收集技术对接信息。** 设计阶段只需要知道"需要读邮件"，实现阶段必须知道"邮件 API 地址是什么"。
