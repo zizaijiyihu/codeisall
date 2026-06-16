@@ -97,7 +97,7 @@ do_start() {
   # 启动 API server
   log "启动 API server (:$API_PORT)..."
   cd "$SCRIPTS_DIR"
-  EXAMPLE_DIR="$project" nohup python3 -m uvicorn server:app --port $API_PORT --log-level warning > /tmp/codeisall-api.log 2>&1 &
+  EXAMPLE_DIR="$project" nohup python3 -m uvicorn server:app --port $API_PORT --log-level warning --reload --reload-dir . > /tmp/codeisall-api.log 2>&1 &
   local api_pid=$!
 
   # 等待 API 就绪

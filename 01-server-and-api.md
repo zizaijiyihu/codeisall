@@ -30,22 +30,27 @@ SERVE_FRONTEND=1 python3 -m uvicorn server:app --port 8502
 
 ```bash
 # 进程 1：后端 server（端口 8502，只提供 /api）
-cd /Users/xiaohu/projects/DDD/ddd-viewer-react
-EXAMPLE_DIR=/path/to/your-project python3 -m uvicorn server:app --port 8502 &
+cd <codeisall-skill>/scripts
+EXAMPLE_DIR=/path/to/your-project python3 -m uvicorn server:app --port 8502 \
+    --reload --reload-dir . &
 
 # 进程 2：前端 dev server（端口 5171，HMR）
-cd /Users/xiaohu/projects/DDD/ddd-viewer-react
+cd <codeisall-skill>/viewer
 npx vite &
 ```
 
+`--reload --reload-dir .` 让 uvicorn 监听 `scripts/` 下的 .py 改动自动重启。
+**不加这个 flag 的话，改 `extract.py` / `codeisall_lint.py` / `server.py` 必须手动 `kill $(lsof -ti :8502)` 重启。**
+`reload-dir` 限定为 `.`（即 scripts 目录），不会被 example/ 业务代码改动触发误重启。
+
 两个进程都要起。用户访问 **http://localhost:5171/**。
 
-如果只用现成的 `ddd-python/example`：
+如果只用 codeisall 自带的 `example/`：
 
 ```bash
-cd /Users/xiaohu/projects/DDD/ddd-viewer-react
-python3 -m uvicorn server:app --port 8502 &
-npx vite &
+cd <codeisall-skill>/scripts
+python3 -m uvicorn server:app --port 8502 --reload --reload-dir . &
+cd <codeisall-skill>/viewer && npx vite &
 ```
 
 ### 切项目（重启 server 改 EXAMPLE_DIR）
@@ -55,8 +60,9 @@ npx vite &
 kill $(lsof -ti :8502)
 
 # 用新 EXAMPLE_DIR 启动
-cd /Users/xiaohu/projects/DDD/ddd-viewer-react
-EXAMPLE_DIR=/path/to/new-project python3 -m uvicorn server:app --port 8502 &
+cd <codeisall-skill>/scripts
+EXAMPLE_DIR=/path/to/new-project python3 -m uvicorn server:app --port 8502 \
+    --reload --reload-dir . &
 ```
 
 vite (5171) 不用动 —— 它通过 proxy 自动跟新 server 通信。
