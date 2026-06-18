@@ -340,18 +340,33 @@ function buildLayout(model, callbacks, highlightIds, pendingMap) {
     });
   });
 
-  // 事件边（ctx-level）：source/target 改为 ctx-bg 节点 —— 事件是 Context 间集成，
-  // 视觉上从 ctx 边界出入，避免边穿过其他 ctx 的内部
-  model.relations.forEach((rel, i) => {
-    const sBg = `ctx-bg-${rel.from}`, tBg = `ctx-bg-${rel.to}`;
+  // 事件边（ctx-level）：按 (from, to) 聚合 —— 多事件叠加到 1 条边上
+  // 这是 generic 处理：不关心 ctx 类型/事件含义，只看图结构
+  // 每对 ctx 之间最多 1 条边 → 不会出现 N 条平行线 label 撞在一起
+  const edgeGroups = new Map();   // key = `${from}->${to}` -> [rel, ...]
+  model.relations.forEach((rel) => {
     if (!ctxBgSize[rel.from] || !ctxBgSize[rel.to]) return;
+    const k = `${rel.from}->${rel.to}`;
+    if (!edgeGroups.has(k)) edgeGroups.set(k, []);
+    edgeGroups.get(k).push(rel);
+  });
+  edgeGroups.forEach((rels, key) => {
+    const [from, to] = key.split('->');
+    const sBg = `ctx-bg-${from}`, tBg = `ctx-bg-${to}`;
     edges.push({
-      id: `event-${i}`, source: sBg, target: tBg,
+      id: `event-${key}`, source: sBg, target: tBg,
       type: 'event',
       data: {
-        event: rel.event, label: rel.label,
-        relationType: rel.relation_type, integration: rel.integration,
-        dataFlow: rel.data_flow, failureStrategy: rel.failure_strategy,
+        // 兼容字段：首个事件平铺到顶层（老的 EventEdge 渲染路径）
+        event: rels[0].event, label: rels[0].label,
+        relationType: rels[0].relation_type, integration: rels[0].integration,
+        dataFlow: rels[0].data_flow, failureStrategy: rels[0].failure_strategy,
+        // 新字段：events 数组（EventEdge 检测到后会展示数量徽章 + hover 列表）
+        events: rels.map(r => ({
+          event: r.event, label: r.label,
+          relationType: r.relation_type, integration: r.integration,
+          dataFlow: r.data_flow, failureStrategy: r.failure_strategy,
+        })),
       },
       markerEnd: { type: MarkerType.ArrowClosed, color: '#8c959f' },
     });
@@ -409,6 +424,39 @@ function buildLayout(model, callbacks, highlightIds, pendingMap) {
       if (dy > 0) { e.sourceHandle = 'bottom'; e.targetHandle = 'top'; }
       else        { e.sourceHandle = 'top-out'; e.targetHandle = 'bottom-in'; }
     }
+  });
+
+  // ========== ctx-bg 真正 parent 化（让 ctx 整体拖动）==========
+  // 把 ctx 内部节点位置从 absolute 转为 relative，并设置 parentNode / extent=parent。
+  // React Flow 语义：parent 拖动时 children 自动跟随；children 限制在 parent 边界内。
+  // 必须在 handle selection 之后做，因为 handle 选择基于 absolute 几何关系。
+  Object.entries(allRootIdsByCtx).forEach(([ctxId, rootIdList]) => {
+    const sz = ctxBgSize[ctxId];
+    if (!sz) return;
+    const parentId = `ctx-bg-${ctxId}`;
+    const memberIds = [];
+    rootIdList.forEach(rid => {
+      memberIds.push(rid);
+      (childrenMap[rid] || []).forEach(cid => memberIds.push(cid));
+    });
+    (serviceIdsByCtx[ctxId] || []).forEach(sid => memberIds.push(sid));
+    memberIds.forEach((mid) => {
+      const n = nodeMap[mid];
+      if (!n) return;
+      n.position = { x: n.position.x - sz.x, y: n.position.y - sz.y };
+      n.parentNode = parentId;
+      n.extent = 'parent';
+      n.draggable = true;  // 允许在 parent 内拖动子节点
+    });
+  });
+  // ctx-bg 节点本身：需要 style.width / style.height 让 React Flow 知道 parent 边界
+  // 而且要 draggable=true 让用户能拖整个 ctx
+  nodes.forEach((n) => {
+    if (!n.id.startsWith('ctx-bg-')) return;
+    const sz = ctxBgSize[n.id.replace('ctx-bg-', '')];
+    if (!sz) return;
+    n.style = { ...(n.style || {}), width: sz.w, height: sz.h, zIndex: -1 };
+    n.draggable = true;
   });
 
   return { nodes, edges };

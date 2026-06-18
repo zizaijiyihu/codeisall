@@ -33,9 +33,23 @@ export default function EventEdge({
     sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
   });
 
-  const isACL = data?.relationType === 'anticorruption-layer';
-  const relLabel = RELATION_LABELS[data?.relationType] || data?.relationType || '';
-  const intLabel = INTEGRATION_LABELS[data?.integration] || data?.integration || '';
+  // 多事件支持（新）：data.events 是数组，长度可能 ≥ 1
+  // 兼容老的单事件格式：若无 events 数组则按 1 个事件渲染
+  const events = Array.isArray(data?.events) && data.events.length
+    ? data.events
+    : [{
+        event: data?.event,
+        label: data?.label,
+        relationType: data?.relationType,
+        integration: data?.integration,
+        dataFlow: data?.dataFlow,
+        failureStrategy: data?.failureStrategy,
+      }];
+
+  const isACL = events.some(e => e.relationType === 'anticorruption-layer');
+  const count = events.length;
+  // 短 label：始终显示首个事件名 + 计数徽章；详情在 hover/click 时展开
+  const headEvent = events[0]?.event || '?';
 
   return (
     <>
@@ -53,29 +67,42 @@ export default function EventEdge({
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
           }}
+          onMouseEnter={() => setShowDetail(true)}
+          onMouseLeave={() => setShowDetail(false)}
           onClick={() => setShowDetail(!showDetail)}
         >
           <div className="edge-event-name">
             {isACL && <span className="acl-badge">ACL</span>}
-            {data?.event}
+            {headEvent}
+            {count > 1 && <span className="edge-count-badge">+{count - 1}</span>}
           </div>
-          <div className="edge-relation-info">
-            {relLabel}{relLabel && intLabel ? ' · ' : ''}{intLabel}
-          </div>
-          {showDetail && (data?.dataFlow || data?.failureStrategy) && (
+          {showDetail && (
             <div className="edge-detail">
-              {data.dataFlow && (
-                <div className="edge-detail-row">
-                  <span className="edge-detail-label">数据流</span>
-                  <span className="edge-detail-val">{data.dataFlow}</span>
+              {/* 多事件：列每个事件 + 元信息（数据流 / 失败策略） */}
+              {events.map((ev, idx) => (
+                <div key={idx} className="edge-event-block">
+                  <div className="edge-event-title">
+                    <strong>{ev.event}</strong>
+                    {ev.label ? <span className="edge-event-sublabel"> · {ev.label}</span> : null}
+                  </div>
+                  <div className="edge-event-meta">
+                    {RELATION_LABELS[ev.relationType] || ev.relationType}
+                    {ev.integration ? ` · ${INTEGRATION_LABELS[ev.integration] || ev.integration}` : ''}
+                  </div>
+                  {ev.dataFlow && (
+                    <div className="edge-detail-row">
+                      <span className="edge-detail-label">数据流</span>
+                      <span className="edge-detail-val">{ev.dataFlow}</span>
+                    </div>
+                  )}
+                  {ev.failureStrategy && (
+                    <div className="edge-detail-row">
+                      <span className="edge-detail-label">失败策略</span>
+                      <span className="edge-detail-val">{ev.failureStrategy}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              {data.failureStrategy && (
-                <div className="edge-detail-row">
-                  <span className="edge-detail-label">失败策略</span>
-                  <span className="edge-detail-val">{data.failureStrategy}</span>
-                </div>
-              )}
+              ))}
             </div>
           )}
         </div>
