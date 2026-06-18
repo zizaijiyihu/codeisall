@@ -68,10 +68,13 @@ export default function EventEdge({
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
             pointerEvents: 'all',
           }}
-          onClick={(e) => { e.stopPropagation(); setShowDetail(!showDetail); }}
-          title={showDetail ? '点击关闭详情' : '点击查看全部事件详情'}
         >
-          <div className="edge-event-name">
+          <div
+            className="edge-event-name"
+            onClick={(e) => { e.stopPropagation(); setShowDetail(!showDetail); }}
+            title={showDetail ? '点击折叠' : '点击展开全部事件详情'}
+            style={{ cursor: 'pointer' }}
+          >
             {isACL && <span className="acl-badge">ACL</span>}
             {headEvent}
             {count > 1 && <span className="edge-count-badge">+{count - 1}</span>}
@@ -82,7 +85,11 @@ export default function EventEdge({
             <div className="edge-event-summary">{events[0].label}</div>
           )}
           {showDetail && (
-            <div className="edge-detail">
+            <div
+              className="edge-detail"
+              onWheel={(e) => e.stopPropagation()}       // 阻止冒泡到 React Flow，避免被解释为画布缩放
+              onMouseDown={(e) => e.stopPropagation()}   // 防止被识别为 panning
+            >
               {/* 多事件：列每个事件 + 元信息（数据流 / 失败策略） */}
               {events.map((ev, idx) => (
                 <div key={idx} className="edge-event-block">

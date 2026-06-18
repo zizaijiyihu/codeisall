@@ -39,7 +39,17 @@ export default function App() {
           (data.items || []).forEach(it => {
             if (it.node_id) m.set(it.node_id, it);
           });
-          setPendingMap(m);
+          // 内容相同则不更新 state —— 避免 3s 周期触发下游 useEffect 重渲染
+          // （DomainView 依赖 pendingMap，每次 setPendingMap(new Map) 都会
+          //   重 buildLayout / setEdges / 重挂 EventEdge，把展开的事件 popover 关掉）
+          setPendingMap(prev => {
+            if (prev.size !== m.size) return m;
+            for (const [k, v] of m) {
+              const pv = prev.get(k);
+              if (!pv || JSON.stringify(pv) !== JSON.stringify(v)) return m;
+            }
+            return prev;  // 内容一致，保持 reference 不变
+          });
         })
         .catch(() => {});
     };
