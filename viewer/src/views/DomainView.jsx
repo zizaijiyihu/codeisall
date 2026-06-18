@@ -444,7 +444,7 @@ function buildLayout(model, callbacks, highlightIds, pendingMap) {
       const n = nodeMap[mid];
       if (!n) return;
       n.position = { x: n.position.x - sz.x, y: n.position.y - sz.y };
-      n.parentNode = parentId;
+      n.parentId = parentId;  // @xyflow/react v12 字段名（v10 用的是 parentNode）
       n.extent = 'parent';
       n.draggable = true;  // 允许在 parent 内拖动子节点
     });
