@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import {
   ReactFlow, Background, Controls, MiniMap,
   useNodesState, useEdgesState, MarkerType,
@@ -466,10 +466,45 @@ export default function DomainView({ model, onShowDetail, onShowCtxDetail, onJum
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
+  // 记录用户手动拖过的节点位置 —— buildLayout 重跑（model 轮询刷新等）后用它覆盖 dagre 结果
+  // 持久化到 localStorage：刷新页面 / 重启 server 后位置仍保留
+  const userPositionsRef = useRef(null);
+  if (userPositionsRef.current === null) {
+    try {
+      const raw = localStorage.getItem('codeisall.userPositions');
+      userPositionsRef.current = raw ? new Map(JSON.parse(raw)) : new Map();
+    } catch { userPositionsRef.current = new Map(); }
+  }
+  const persistUserPositions = useCallback(() => {
+    try {
+      localStorage.setItem('codeisall.userPositions',
+        JSON.stringify(Array.from(userPositionsRef.current.entries())));
+    } catch { /* localStorage 写满 / 隐私模式：忽略 */ }
+  }, []);
+
+  // 拦截 onNodesChange：检测拖动结束，落库
+  const handleNodesChange = useCallback((changes) => {
+    changes.forEach((c) => {
+      if (c.type === 'position' && c.dragging === false && c.position) {
+        userPositionsRef.current.set(c.id, { x: c.position.x, y: c.position.y });
+      }
+    });
+    onNodesChange(changes);
+    if (changes.some(c => c.type === 'position' && c.dragging === false)) {
+      persistUserPositions();
+    }
+  }, [onNodesChange, persistUserPositions]);
+
   useEffect(() => {
     if (!model) return;
     const { nodes: n, edges: e } = buildLayout(model, { onShowDetail, onJumpToArch, onShowCtxDetail }, highlightIds, pendingMap);
-    setNodes(n);
+    // 用用户拖过的位置覆盖 dagre 计算的位置
+    // 注意：父节点（ctx-bg）位置是 absolute；子节点位置是 relative-to-parent，二者都直接覆盖 OK
+    const merged = n.map((node) => {
+      const saved = userPositionsRef.current.get(node.id);
+      return saved ? { ...node, position: saved } : node;
+    });
+    setNodes(merged);
     setEdges(e);
   }, [model, onShowDetail, onShowCtxDetail, onJumpToArch, highlightIds, pendingMap]);
 
@@ -477,7 +512,7 @@ export default function DomainView({ model, onShowDetail, onShowCtxDetail, onJum
     <ReactFlow
       nodes={nodes}
       edges={edges}
-      onNodesChange={onNodesChange}
+      onNodesChange={handleNodesChange}
       onEdgesChange={onEdgesChange}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
