@@ -62,21 +62,25 @@ export default function EventEdge({
       />
       <EdgeLabelRenderer>
         <div
-          className={`edge-label-wrap nodrag nopan ${isACL ? 'acl' : ''}`}
+          className={`edge-label-wrap nodrag nopan ${isACL ? 'acl' : ''} ${showDetail ? 'expanded' : ''}`}
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-            pointerEvents: 'all',  // React Flow v12 默认 none，必须显式打开
+            pointerEvents: 'all',
           }}
-          onMouseEnter={() => setShowDetail(true)}
-          onMouseLeave={() => setShowDetail(false)}
           onClick={(e) => { e.stopPropagation(); setShowDetail(!showDetail); }}
+          title={showDetail ? '点击关闭详情' : '点击查看全部事件详情'}
         >
           <div className="edge-event-name">
             {isACL && <span className="acl-badge">ACL</span>}
             {headEvent}
             {count > 1 && <span className="edge-count-badge">+{count - 1}</span>}
+            <span className="edge-toggle-hint">{showDetail ? '▾' : '▸'}</span>
           </div>
+          {/* 折叠态显示首个事件的中文流程标签作为概览 */}
+          {!showDetail && events[0]?.label && (
+            <div className="edge-event-summary">{events[0].label}</div>
+          )}
           {showDetail && (
             <div className="edge-detail">
               {/* 多事件：列每个事件 + 元信息（数据流 / 失败策略） */}

@@ -325,14 +325,30 @@ export default function KnowledgeDrawer({ model, onHighlight }) {
     });
 
     // ========== 🔥 事件与协作：events + domain_service.operates_on ==========
+    // 把 model.relations 按 event 名索引：每条 relation 的 label/data_flow 都是中文流程语义
+    const relsByEvent = {};
+    (model.relations || []).forEach((rel) => {
+      if (!rel.event) return;
+      (relsByEvent[rel.event] = relsByEvent[rel.event] || []).push(rel);
+    });
     (model.events || []).forEach((evt, i) => {
-      const consumerStr = (evt.consumers || []).map(c => `${c.context}.${c.aggregate}.${c.method}`).join(', ') || '无消费者';
+      const rels = relsByEvent[evt.name] || [];
+      // 中文流程语义（首选 relation.label）
+      const flowLabels = rels.map(r => r.label).filter(Boolean);
+      const titleSuffix = flowLabels.length ? `　·　${flowLabels[0]}` : '';
+      const consumerLines = rels.length
+        ? rels.map(r => `→ ${r.to}：${r.label || '(无中文标签)'}` +
+                       (r.data_flow ? `\n   数据流：${r.data_flow}` : '') +
+                       (r.failure_strategy ? `\n   失败策略：${r.failure_strategy}` : ''))
+              .join('\n')
+        : `(无 event_handler 监听者)`;
       const nonConsumerStr = (evt.non_consumers || []).map(nc => `${nc.context}（${nc.reason}）`).join('; ');
       out.event.push({
         key: `evt-${i}`,
         icon: '🔥',
-        title: evt.name,
-        detail: `触发：${evt.trigger || '(声明式)'}　·　消费者：${consumerStr}` +
+        title: `${evt.name}${titleSuffix}`,
+        detail: `触发：${evt.trigger || '(声明式)'}\n` +
+                `消费者：\n${consumerLines}` +
                 (nonConsumerStr ? `\n非消费者：${nonConsumerStr}` : ''),
         owners: resolveEvent(evt, model),
       });

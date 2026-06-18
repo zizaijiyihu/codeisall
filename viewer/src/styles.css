@@ -528,6 +528,29 @@ body {
   margin-bottom: 4px;
 }
 
+/* 折叠态：事件名下方的中文流程标签 */
+.edge-event-summary {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #57606a;
+  line-height: 1.3;
+  max-width: 280px;
+  white-space: normal;
+}
+
+/* 展开/折叠提示 */
+.edge-toggle-hint {
+  font-size: 10px;
+  color: #57606a;
+  margin-left: 2px;
+}
+
+.edge-label-wrap.expanded {
+  background: #f6f8fa;
+  border-color: #0969da;
+  box-shadow: 0 4px 16px rgba(9,105,218,0.18);
+}
+
 /* ========== Context background ========== */
 .ctx-bg {
   border-radius: 16px;
