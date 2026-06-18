@@ -168,10 +168,16 @@ class Extractor:
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, ast.ClassDef):
                 self._process_class(node, ctx_id, source_lines, rel_str)
-                # 扫描 class 内部的方法（测试方法带 @verifies 在 class 里）
+                # 判断 class 是否为 @domain_service —— 内部方法上的 @business_rule
+                # 应识别为 domain_service_method 而非 orphan_function（详见 10-rules-and-invariants.md）
+                is_domain_service = any(
+                    decorator_call_name(d) == "domain_service" for d in node.decorator_list
+                )
+                # 扫描 class 内部的方法（测试方法带 @verifies 在 class 里；domain_service 方法的 @business_rule 也在这里）
                 for stmt in node.body:
                     if isinstance(stmt, ast.FunctionDef):
-                        self._process_function(stmt, ctx_id, rel_str)
+                        self._process_function(stmt, ctx_id, rel_str,
+                                               parent_class=node if is_domain_service else None)
             elif isinstance(node, ast.FunctionDef):
                 self._process_function(node, ctx_id, rel_str)
 
@@ -448,7 +454,8 @@ class Extractor:
 
     # ---------- 函数处理（event_handler）----------
 
-    def _process_function(self, func: ast.FunctionDef, ctx_id: str | None, file_rel: str = ""):
+    def _process_function(self, func: ast.FunctionDef, ctx_id: str | None, file_rel: str = "",
+                          parent_class: ast.ClassDef | None = None):
         for dec in func.decorator_list:
             name = decorator_call_name(dec)
             if name == "event_handler":
@@ -525,7 +532,10 @@ class Extractor:
                         "source_location": {"file": file_rel, "line": dec.lineno},
                     })
             elif name == "business_rule":
-                # @business_rule 装在 @event_handler 函数上：守护代码就是这个 handler
+                # @business_rule 装饰位置合法形式（详见 10-rules-and-invariants.md）：
+                #   1. 装在 @event_handler 函数上 → enforced_by_type=event_handler
+                #   2. 装在 @domain_service class 的方法上 → enforced_by_type=domain_service_method
+                #   其他位置 → orphan_function（lint 报错）
                 try:
                     kwargs = decorator_kwargs(dec)
                 except ValueError:
@@ -533,11 +543,21 @@ class Extractor:
                 has_event_handler = any(
                     decorator_call_name(d) == "event_handler" for d in func.decorator_list
                 )
+                if has_event_handler:
+                    enforced_by = f"{ctx_id}.{func.name}"
+                    enforced_by_type = "event_handler"
+                elif parent_class is not None:
+                    # parent_class 由调用方在判断 @domain_service 后传入
+                    enforced_by = f"{ctx_id}.{parent_class.name}.{func.name}"
+                    enforced_by_type = "domain_service_method"
+                else:
+                    enforced_by = None
+                    enforced_by_type = "orphan_function"
                 self.business_rules.append({
                     **kwargs,
                     "source_location": {"file": file_rel, "line": dec.lineno},
-                    "enforced_by": f"{ctx_id}.{func.name}" if has_event_handler else None,
-                    "enforced_by_type": "event_handler" if has_event_handler else "orphan_function",
+                    "enforced_by": enforced_by,
+                    "enforced_by_type": enforced_by_type,
                 })
 
     # ---------- 最终组装 ----------
