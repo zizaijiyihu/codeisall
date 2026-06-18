@@ -520,6 +520,11 @@ export default function DomainView({ model, onShowDetail, onShowCtxDetail, onJum
       fitViewOptions={{ padding: 0.15 }}
       minZoom={0.05}
       maxZoom={2}
+      // 标准 IDE 行为：滚轮 = 平移画布；Cmd/Ctrl + 滚轮 = 缩放
+      panOnScroll
+      panOnScrollSpeed={0.8}
+      zoomOnScroll={false}
+      zoomOnPinch
       proOptions={{ hideAttribution: true }}
     >
       <Background color="#d1d9e0" gap={20} />
