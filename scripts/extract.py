@@ -143,9 +143,22 @@ class Extractor:
         self.query_handlers: dict[str, list[dict]] = defaultdict(list)  # ctx_id -> [query_handler]
         self.view_models: dict[str, list[dict]] = defaultdict(list)     # ctx_id -> [view_model]
 
+    # 文件遍历时跳过的顶级目录名 —— 这些目录里的代码不属于业务领域
+    # 特别是 `.claude/` 含 skill 安装产物（example/ 下有 order/payment 等 demo ctx），
+    # 不排除会污染看板（用户项目里冒出 order/payment 等无关 ctx）
+    _EXCLUDED_PARTS = frozenset({
+        "__pycache__",
+        ".claude",          # Claude Code 插件/skill 安装目录（含 example demo）
+        ".git",
+        ".venv", "venv", "env",
+        "node_modules",
+        ".pytest_cache", ".mypy_cache", ".ruff_cache",
+        "dist", "build", ".tox",
+    })
+
     def run(self) -> dict:
         for py_file in sorted(self.root.rglob("*.py")):
-            if "__pycache__" in py_file.parts:
+            if any(part in self._EXCLUDED_PARTS for part in py_file.parts):
                 continue
             self._process_file(py_file)
         return self._build_model()
