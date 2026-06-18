@@ -62,14 +62,15 @@ export default function EventEdge({
       />
       <EdgeLabelRenderer>
         <div
-          className={`edge-label-wrap ${isACL ? 'acl' : ''}`}
+          className={`edge-label-wrap nodrag nopan ${isACL ? 'acl' : ''}`}
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            pointerEvents: 'all',  // React Flow v12 默认 none，必须显式打开
           }}
           onMouseEnter={() => setShowDetail(true)}
           onMouseLeave={() => setShowDetail(false)}
-          onClick={() => setShowDetail(!showDetail)}
+          onClick={(e) => { e.stopPropagation(); setShowDetail(!showDetail); }}
         >
           <div className="edge-event-name">
             {isACL && <span className="acl-badge">ACL</span>}

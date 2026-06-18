@@ -475,6 +475,9 @@ body {
   padding-top: 6px;
   border-top: 1px solid #e5e8eb;
   text-align: left;
+  max-width: 380px;
+  max-height: 360px;
+  overflow-y: auto;
 }
 
 .edge-detail-row {
