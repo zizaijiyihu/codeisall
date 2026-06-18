@@ -94,11 +94,83 @@ function MemberCard({ member, type, extra }) {
   );
 }
 
+function ServiceCard({ svc, businessRules }) {
+  return (
+    <div className="agg-member type-service">
+      <div className="agg-member-hdr">
+        <span className="member-type-badge service">Domain Service</span>
+        <span className="member-node-name">{svc.name}</span>
+      </div>
+      {svc.description && <div className="member-node-desc">{svc.description}</div>}
+      {svc.operates_on && svc.operates_on.length > 0 && (
+        <div className="member-section">
+          <div className="sub-label">协作聚合</div>
+          <div className="constraint-row">{svc.operates_on.join(' · ')}</div>
+        </div>
+      )}
+      {businessRules && businessRules.length > 0 && (
+        <div className="member-section">
+          <div className="sub-label">业务规则 <span className="sub-count">{businessRules.length}</span></div>
+          {businessRules.map((br, i) => (
+            <div key={i} className="inv-item">
+              <div className="inv-row">{br.rule}</div>
+              <div className="inv-detail">
+                {br.id && <div className="inv-fields">id: {br.id}</div>}
+                {br.involves && <div className="inv-fields">涉及: {br.involves.join(' + ')}</div>}
+                {br.source && <div className="inv-fields">来源: {br.source}</div>}
+                {br.timing && <div className="inv-fields">时机: {br.timing}</div>}
+                {br.steps && <div className="inv-fields">步骤: {br.steps.join(' → ')}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AggregateDetailView({ model, contextId, focusMember, onClose }) {
   const ctx = model.contexts.find(c => c.id === contextId);
   if (!ctx) return null;
-  // 多聚合：根据 focusMember 找到对应的聚合，否则取第一个
   const allAggs = (ctx.aggregates || []).filter(a => a.root && typeof a.root === 'object');
+  // 收集本 ctx 下所有 domain_service（散落在多个聚合的 domain_services 字段里）
+  const allServices = [];
+  (ctx.aggregates || []).forEach(a => (a.domain_services || []).forEach(s => allServices.push(s)));
+
+  // focusMember 可能指向：聚合根 / entity / VO / domain_service
+  // 先看是否是 service —— 是则走 service 渲染分支
+  const focusedService = focusMember
+    ? allServices.find(s => s.name === focusMember)
+    : null;
+
+  if (focusedService) {
+    // 该 service 关联的 business_rule（按 enforced_by 前缀匹配 ctx.service.method）
+    const enforcerPrefix = `${ctx.id}.${focusedService.name}.`;
+    const relatedRules = (model.business_rules || [])
+      .filter(br => (br.enforced_by || '').startsWith(enforcerPrefix));
+    return (
+      <div className="agg-detail-overlay" onClick={onClose}>
+        <div className="agg-detail-panel" onClick={(e) => e.stopPropagation()}>
+          <div className="agg-detail-header">
+            <div>
+              <span className="agg-detail-ctxname">{ctx.name}</span>
+              <span className="agg-detail-arrow">›</span>
+              <span className="agg-detail-aggname">领域服务</span>
+              <span className="agg-detail-arrow">›</span>
+              <span className="agg-detail-focus">{focusedService.name}</span>
+            </div>
+            <button className="agg-detail-close" onClick={onClose}>关闭 ✕</button>
+          </div>
+          <div className="agg-detail-body">
+            <ServiceCard svc={focusedService} businessRules={relatedRules} />
+            <button className="agg-detail-showall" onClick={() => onClose()}>← 返回</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 多聚合：根据 focusMember 找到对应的聚合，否则取第一个
   let agg = allAggs[0];
   if (focusMember) {
     const found = allAggs.find(a => {
