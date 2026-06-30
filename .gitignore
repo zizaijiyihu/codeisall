@@ -1,6 +1,7 @@
 # Dependencies (viewer 前端)
 viewer/node_modules/
 viewer/dist/
+.vite/
 
 # Runtime
 pending_changes.json
