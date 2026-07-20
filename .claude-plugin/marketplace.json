@@ -1,0 +1,13 @@
+{
+  "name": "codeisall",
+  "owner": {
+    "name": "codeisall team"
+  },
+  "plugins": [
+    {
+      "name": "codeisall",
+      "source": "./plugins/codeisall",
+      "description": "代码即一切知识的开发框架（DDD 可执行规格 + 可视化看板 + 双 Reviewer 门禁）"
+    }
+  ]
+}

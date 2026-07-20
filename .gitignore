@@ -1,6 +1,6 @@
 # Dependencies (viewer 前端)
-viewer/node_modules/
-viewer/dist/
+plugins/codeisall/skills/codeisall/viewer/node_modules/
+plugins/codeisall/skills/codeisall/viewer/dist/
 .vite/
 
 # Runtime

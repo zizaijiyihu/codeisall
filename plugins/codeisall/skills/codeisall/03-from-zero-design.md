@@ -48,7 +48,7 @@ EXAMPLE_DIR=/path/to/{project} python3 -m uvicorn server:app --port 8502 &
 - 子域清单（含每个的类型：core / supporting / generic）
 - 子域之间的依赖关系草图
 
-**这一步可以参考 `ddd-review-skill/08-strategic-modeling.md` 的产出物规格。**
+**这一步可以参考 `${CLAUDE_PLUGIN_ROOT}/skills/ddd-review/08-strategic-modeling.md` 的产出物规格。**
 
 ### 第 2 步：战略层装饰器（写 manifest.py）
 
@@ -114,7 +114,7 @@ class <RootName>:
     def <action_name>(self, ...): pass
 ```
 
-**指标参考（来自 `ddd-review-skill/09-tactical-modeling.md`）**：
+**指标参考（来自 `${CLAUDE_PLUGIN_ROOT}/skills/ddd-review/09-tactical-modeling.md`）**：
 - 每个聚合根至少 1 条不变量（贫血聚合会被 lint 警告）
 - 每个聚合根至少 1 个 @command（仅有属性的聚合是数据载体不是聚合）
 - 不变量描述用业务语言，formal 用类似数学表达

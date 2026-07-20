@@ -1,13 +1,13 @@
 # 12 · 领域建模自查清单（Domain Review Checklist）
 
-> **设计阶段（阶段 1-3）结束时**，主 Agent 用此清单自查；自查通过后启动 `domain-reviewer` 复审。
+> **设计阶段（阶段 1-3）结束时**，主 Agent 用此清单自查；自查通过后启动 `domain-review` 复审。
 > 关注的是**装饰器声明的合理性**，不关心 method body（那是 13-code-review-checklist.md）。
 
 ## 何时跑
 
 ```
 战略层（manifest.py）→ 战术层（domain/*.py 装饰器骨架）→ 集成层（handlers）→ ★这里自查★
-→ 通过 → domain-reviewer 复审 → 通过 → 进入实现阶段
+→ 通过 → domain-review 复审 → 通过 → 进入实现阶段
 → 不过 → 退回设计阶段迭代
 ```
 
@@ -117,14 +117,14 @@
 - ✓ 不变量充分（订单、支付各 4 条以上）
 - ✓ 业务规则归属正确
 
-可以启动 domain-reviewer 做独立复审。
+可以启动 domain-review 做独立复审。
 ```
 
-## 跟 domain-reviewer 的关系
+## 跟 domain-review 的关系
 
-| | 主 Agent 自查 | domain-reviewer 复审 |
+| | 主 Agent 自查 | domain-review 复审 |
 |---|---|---|
-| 谁跑 | 主 Agent 自己 | 独立 subagent |
+| 谁跑 | 主 Agent 自己 | 独立 forked skill（Explore，只读） |
 | 视角 | "我有没有漏" | "做的对不对" |
 | 必须跑 | ✅ 每次设计阶段结束 | ✅ 自查通过后 |
 | 跳过 | ❌ 跳过 = 违规 | ❌ 跳过 = 违规 |

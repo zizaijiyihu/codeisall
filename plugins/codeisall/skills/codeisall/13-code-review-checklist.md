@@ -1,18 +1,18 @@
 # 13 · 代码实现自查清单（Code Review Checklist）
 
-> **实现阶段（阶段 4-5）结束时**，主 Agent 用此清单自查；自查通过后启动 `code-reviewer` 复审。
+> **实现阶段（阶段 4-5）结束时**，主 Agent 用此清单自查；自查通过后启动 `code-review` 复审。
 > 关注的是**代码实现的正确性**，不重复审装饰器（那是 12-domain-review-checklist.md）。
 
 ## 何时跑
 
 ```
-domain-reviewer ✓ → 实现 body + 写 infra + 写测试 → ★这里自查★
-→ 通过 → code-reviewer 复审 → 通过 → 告诉用户"完成"
+domain-review ✓ → 实现 body + 写 infra + 写测试 → ★这里自查★
+→ 通过 → code-review 复审 → 通过 → 告诉用户"完成"
 ```
 
 ## 前置条件
 
-**domain-reviewer 已通过**。如果有未解决的领域建模问题，跑这个清单没意义。
+**domain-review 已通过**。如果有未解决的领域建模问题，跑这个清单没意义。
 
 ## 自查清单
 
@@ -127,11 +127,11 @@ domain-reviewer ✓ → 实现 body + 写 infra + 写测试 → ★这里自查�
 待修复后再启viewer。
 ```
 
-## 跟 code-reviewer 的关系
+## 跟 code-review 的关系
 
-| | 主 Agent 自查 | code-reviewer 复审 |
+| | 主 Agent 自查 | code-review 复审 |
 |---|---|---|
-| 谁跑 | 主 Agent 自己 | 独立 subagent |
+| 谁跑 | 主 Agent 自己 | 独立 forked skill（Explore，只读） |
 | 视角 | "我有没有漏" | "做的对不对" |
 | 跳过 | ❌ 违规 | ❌ 违规 |
 

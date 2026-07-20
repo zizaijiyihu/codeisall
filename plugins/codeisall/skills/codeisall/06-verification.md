@@ -265,14 +265,14 @@ Layer 2: 测试验证（pytest）
   └─ 知识覆盖率 100%（每条 invariant/command 有 @verifies）
   └─ 不通过 = 实现没兑现契约
 
-Layer 3: 双门禁结构验证（domain-reviewer + code-reviewer）
+Layer 3: 双门禁结构验证（domain-review + code-review）
   ├─ 设计门禁（阶段 1-3 后）：
   │   ├─ 主 Agent 自查：12-domain-review-checklist.md（A-F）
-  │   └─ domain-reviewer 复审：装饰器声明 / 聚合边界 / 不变量完整性
+  │   └─ domain-review 复审：装饰器声明 / 聚合边界 / 不变量完整性
   │   └─ 不过 = 不允许进入实现阶段
   └─ 实现门禁（阶段 4-5 后）：
       ├─ 主 Agent 自查：13-code-review-checklist.md（G-K）
-      └─ code-reviewer 复审：method body / 依赖方向 / ACL / 测试覆盖
+      └─ code-review 复审：method body / 依赖方向 / ACL / 测试覆盖
       └─ 不过 = 不允许告诉用户"完成"
 ```
 

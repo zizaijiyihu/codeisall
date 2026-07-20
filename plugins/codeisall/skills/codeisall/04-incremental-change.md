@@ -6,7 +6,7 @@
 ## 推荐节奏（从零开始时）
 
 战略 manifest（全 ctx）一次性产出，之后**按 ctx 分阶段推进**，
-每阶段完整跑通一个 ctx：装饰器骨架 → domain-reviewer → 填 body + 测试 → code-reviewer → 下一个 ctx。
+每阶段完整跑通一个 ctx：装饰器骨架 → domain-review → 填 body + 测试 → code-review → 下一个 ctx。
 
 **唯一原则：一次别贪多，单 ctx 闭环再下一个。**
 
@@ -227,4 +227,4 @@ Claude:【Edit 完】"完成"
 | **L3 聚合演化** | 拆 / 合并聚合根、加新聚合 | 标红涉及全部 ctx 内节点，分批执行 |
 | **L4 Context 重组** | 拆 / 合并 Context、改集成方式 | 强烈建议先标 conflict，跟用户深度讨论再细化 |
 
-L3/L4 应该走 `ddd-review-skill/09-tactical-modeling.md` 的"增量需求评估"流程，先做影响分析报告再动手。
+L3/L4 应该走 `${CLAUDE_PLUGIN_ROOT}/skills/ddd-review/09-tactical-modeling.md` 的"增量需求评估"流程，先做影响分析报告再动手。

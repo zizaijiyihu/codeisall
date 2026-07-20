@@ -91,17 +91,17 @@ class WeeklyReport:
 - 跑 lint 检查 / 看测试覆盖
 - "可执行规格"、"代码即知识"
 
-## 与 ddd-review-skill 的分工
+## 与 ddd-review 的分工
 
-codeisall 的领域建模基于 DDD 方法论（聚合根 / 不变量 / 命令 / Bounded Context），但 codeisall 本身不是"DDD 工具" —— 它是**代码即知识的开发框架**，DDD 是它的建模方法论之一。
+codeisall 的领域建模基于 DDD 方法论（聚合根 / 不变量 / 命令 / Bounded Context），但 codeisall 本身不是"DDD 工具" —— 它是**代码即知识的开发框架**，DDD 是它的建模方法论之一。`ddd-review` 是与本技能同插件 (`codeisall`) 的另一个 skill，提供 DDD 原理与规范。
 
 | 场景 | 入口 skill | 另一个 skill 的角色 |
 |------|-----------|--------------------|
-| 审查代码的 DDD 合规性 | `ddd-review-skill` | 不参与 |
-| 设计系统、加需求、做 Agent | `codeisall`（本技能） | 需要 DDD 原理时查 ddd-review-skill |
-| DDD 战略/战术建模原则 | `codeisall` | 查 `ddd-review-skill/08-strategic-modeling.md` |
+| 审查代码的 DDD 合规性 | `ddd-review`（`/codeisall:ddd-review`） | 不参与 |
+| 设计系统、加需求、做 Agent | `codeisall`（本技能） | 需要 DDD 原理时查 `ddd-review` |
+| DDD 战略/战术建模原则 | `codeisall` | 查 `${CLAUDE_PLUGIN_ROOT}/skills/ddd-review/08-strategic-modeling.md` |
 
-**本技能负责操作流程和工具链；DDD 原理 / 规范 / 反模式由 `ddd-review-skill` 承担**。
+**本技能负责操作流程和工具链；DDD 原理 / 规范 / 反模式由 `ddd-review` 承担**。
 
 ## 引用文件索引
 
@@ -118,9 +118,9 @@ codeisall 的领域建模基于 DDD 方法论（聚合根 / 不变量 / 命令 /
 | `09-requirements-discovery.md` | 需求追问框架：结构化追问 → 直接产出装饰器骨架 | 用户说出需求但信息不完整时 |
 | `10-rules-and-invariants.md` | 不变量 vs 业务规则：判定流程 + 守护代码强制规则 | 写 @invariant 或 @business_rule 前必读 |
 | `11-eventual-consistency.md` | 最终一致性保障：幂等 / Outbox / Saga / ACL / 失败策略 | 跨 ctx 业务规则实现时必读 |
-| `12-domain-review-checklist.md` | 领域建模自查清单（A-F）| 设计阶段 1-3 完成、启动 domain-reviewer 前必读 |
-| `13-code-review-checklist.md` | 代码实现自查清单（G-K）| 实现阶段 4-5 完成、启动 code-reviewer 前必读 |
-| `14-review-subagents.md` | 双 Reviewer 复审协议：domain-reviewer + code-reviewer 分阶段把关 | 完整流程的两个门禁，必读 |
+| `12-domain-review-checklist.md` | 领域建模自查清单（A-F）| 设计阶段 1-3 完成、启动 domain-review 前必读 |
+| `13-code-review-checklist.md` | 代码实现自查清单（G-K）| 实现阶段 4-5 完成、启动 code-review 前必读 |
+| `14-review-subagents.md` | 双 Reviewer 复审协议：domain-review + code-review 分阶段把关 | 完整流程的两个门禁，必读 |
 
 加载策略：**SKILL.md 的铁律始终生效，分文件按需读取。** 不要一次全读。
 
@@ -222,16 +222,16 @@ codeisall 的领域建模基于 DDD 方法论（聚合根 / 不变量 / 命令 /
 
 ### 铁律 8：两个阶段，两个 Reviewer，两道门禁
 
-codeisall 把 Reviewer 拆成**两个 subagent**，各管一段：
+codeisall 把 Reviewer 拆成**两个带 `context: fork` 的 skill**（fork 进只读 Explore agent），各管一段：
 
-| 阶段 | 自查清单 | 复审 subagent | 门禁含义 |
+| 阶段 | 自查清单 | 复审 skill | 门禁含义 |
 |---|---|---|---|
-| 设计阶段（1-3）完成 | `12-domain-review-checklist.md` | `domain-reviewer` | 不过 → 不允许进入实现 |
-| 实现阶段（4-5）完成 | `13-code-review-checklist.md` | `code-reviewer` | 不过 → 不允许告诉用户"完成" |
+| 设计阶段（1-3）完成 | `12-domain-review-checklist.md` | `/codeisall:domain-review` | 不过 → 不允许进入实现 |
+| 实现阶段（4-5）完成 | `13-code-review-checklist.md` | `/codeisall:code-review` | 不过 → 不允许告诉用户"完成" |
 
-每个阶段都必须：**主 Agent 自查 → 对应 reviewer 复审 → 通过才放行**。
+每个阶段都必须：**主 Agent 自查 → 对应 reviewer skill 复审 → 通过才放行**。reviewer skill 自带只读工具集（Explore，无 Edit/Write），结构上保证只标 pending-changes、不改代码。
 
-看板 0 红标 + lint 0 errors + 测试 0 fail 是 code-reviewer 阶段的硬指标。
+看板 0 红标 + lint 0 errors + 测试 0 fail 是 code-review 阶段的硬指标。
 
 跳过任一 reviewer = 违规。详见 `14-review-subagents.md`。
 
@@ -367,20 +367,17 @@ codeisall 看板由两个服务支撑，**任何动作前先确认双活**：
 每次工作开始前先确认 server 在跑（端口 8502）。详见 `01-server-and-api.md`。
 
 ```bash
-# 定位到 skill 目录（Claude 从 SKILL.md 所在目录找）
-SKILL_DIR="<codeisall-skill 所在路径>"
-
 # 启动（用自带示例）
-$SKILL_DIR/scripts/codeisall.sh
+${CLAUDE_SKILL_DIR}/scripts/codeisall.sh
 
 # 启动（指定用户项目）
-$SKILL_DIR/scripts/codeisall.sh /path/to/your-project
+${CLAUDE_SKILL_DIR}/scripts/codeisall.sh /path/to/your-project
 
 # 停止
-$SKILL_DIR/scripts/codeisall.sh stop
+${CLAUDE_SKILL_DIR}/scripts/codeisall.sh stop
 
 # 查看状态
-$SKILL_DIR/scripts/codeisall.sh status
+${CLAUDE_SKILL_DIR}/scripts/codeisall.sh status
 ```
 
 > 首次启动会自动安装 viewer/ 的 node_modules（约 30s）。
@@ -400,17 +397,14 @@ $SKILL_DIR/scripts/codeisall.sh status
    - 在已有项目上改东西 → 增量改动（读 `04-incremental-change.md`）
    - 进入实现 → 读 `07-implementation.md`
 
-3. **首次使用时安装 codeisall 到项目目录**：
-   - 检查 `<project>/.claude/skills/codeisall/` 是否存在
-   - 不存在 → 把 codeisall skill 整个目录拷贝过去（包括 SKILL.md / scripts / templates / ...）
-   - 检查 `<project>/.claude/agents/domain-reviewer.md` 和 `code-reviewer.md` 是否都存在
-   - 缺哪个就从 `.claude/skills/codeisall/templates/` 对应文件拷贝过去
-   - 拷贝后**明确告诉用户**："已安装 codeisall skill + 双 reviewer subagent（domain-reviewer / code-reviewer），请重启 Claude Code 会话让 subagent 生效"
-   - 详见 `14-review-subagents.md` 的"安装协议"段
+3. **codeisall 以插件形式安装**（无需手动拷贝、无需重启会话）：
+   - 本 skill 由 `codeisall` 插件提供，安装方式见仓库 README：`/plugin marketplace add <仓库地址>` + `/plugin install codeisall@codeisall`
+   - skill 文件、scripts、viewer、双 reviewer skill 都随插件一起到位；更新走 `/plugin marketplace update codeisall`
+   - 不再需要"拷贝到项目 .claude/ + 重启让 subagent 生效"——reviewer 现在是带 `context: fork` 的 skill，主 Agent 直接调度，详见 `14-review-subagents.md`
 
 4. **启动 server**（如果需要看板）：
-   - 新项目 → 创建目录 → `codeisall.sh /new/project`
-   - 已有项目 → `codeisall.sh /existing/project`
+   - 新项目 → 创建目录 → `${CLAUDE_SKILL_DIR}/scripts/codeisall.sh /new/project`
+   - 已有项目 → `${CLAUDE_SKILL_DIR}/scripts/codeisall.sh /existing/project`
    - **不要默认展示 example** —— 除非用户明确要求
 
 5. **不要急着写代码** —— 严格执行铁律 10：先把领域端到端走一遍，呈现"业务全景图"（流程 + 角色 + 制品 + 状态机 + 异常路径 + 隐含规则），并显式列出"我之前没想到的点"。用户确认全景图、并对关键边界问题（聚合归属、Context 拆分、是否纳入范围）拍板后，才能写第一行装饰器骨架。

@@ -145,7 +145,7 @@ def handle(query, requester) -> list[ReportListView]:
 - @query_handler 装饰函数（不是类），function name 通常叫 `handle`
 - @view_model 装饰 dataclass 类，类名 = @view_model.name
 - query handler **不能 import domain**（聚合是写入用的，读用 read model）
-- visibility 字段不为空时，body 必须真的兑现这个规则（lint 查不到，由 code-reviewer 审）
+- visibility 字段不为空时，body 必须真的兑现这个规则（lint 查不到，由 code-review 审）
 - 跨 ctx 查询 → `reads_from=["ctx_a", "ctx_b"]`，意味着 read model 是物化视图（不能用聚合 join）
 
 ### Step 4：infrastructure 层 — Adapter 实现

@@ -1,0 +1,5 @@
+{
+  "name": "codeisall",
+  "description": "代码即一切知识的开发框架。基于 DDD，用 Python 装饰器定义可执行规格（领域模型），配合可视化看板、15 条 lint 规则、知识驱动测试、双 Reviewer 门禁。",
+  "author": { "name": "codeisall team" }
+}
