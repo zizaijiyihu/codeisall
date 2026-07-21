@@ -41,20 +41,23 @@
 
 ## 更新（团队，每次源仓库有新提交后）
 
-本插件**不设固定版本号**，以 git commit SHA 作为版本。每次推送到本仓库后，团队拉最新：
+本插件**不设固定版本号**，以 git commit SHA 作为版本（官方明确此模式"用户每次新 commit 都收到更新"）。每次推送到本仓库后，团队升级已装插件：
 
 ```text
-/plugin marketplace update codeisall
+/plugin update codeisall@codeisall
+/reload-plugins
 ```
 
-此命令对已注册的 `codeisall` marketplace 重新 `git pull`，拉到最新 commit。**无需手动同步 skill 目录、无需重启会话**——因为省略 version，每次 commit 自动算新版本。
+### 两个 update 命令别混（区别关键）
 
-> 如果 update 后当前会话没立刻反映新内容，再 `/reload-plugins` 一次即可。
+| 命令 | 更新什么 | 何时用 |
+|---|---|---|
+| `/plugin update codeisall@codeisall` | **你已装的插件**（拉云端新代码到 cache，升级副本） | **日常拿你最新代码用这个** |
+| `/plugin marketplace update codeisall` | marketplace **货源目录**（刷新"有什么可装"的目录） | 目录结构变了/加了新插件时才需，日常升级用不上 |
 
-### 更新每步含义
-
-**`/plugin marketplace update codeisall` — 刷新源**
-对已注册的 `codeisall` marketplace 重新 `git pull`，拿到你 push 的最新 commit。类比：刷新商店货架看新货。更新的是 marketplace 源缓存；之后 `/reload-plugins` 让新内容进当前会话。
+- `/plugin update` 比对已装版本的 SHA 与云端最新 commit 的 SHA，不一样就拉新版——所以你每次 push，团队 `/plugin update` 即拉到
+- 升级后 `/reload-plugins` 让新内容进当前会话
+- 无需手动同步 skill 目录、无需重启会话
 
 ## 架构
 
