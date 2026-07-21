@@ -92,8 +92,17 @@ function buildLayout(model, callbacks, highlightIds, pendingMap, measured) {
       const vos = (agg.value_objects || []).filter(v => typeof v === 'object');
       const childCount = entities.length + vos.length;
       const rootSize = getMeasured(rootId, ROOT_W, FB_ROOT_H);
+      // clusterW = root 自身宽 vs children 总宽（各 child 真实测量宽累加 + 间距）取大者。
+      // 宽度自适应后 children 宽度各异，必须用 measured 累加，否则 dagre 占位宽度与真实不符 → 横向错位。
+      const childIds = [
+        ...entities.map(e => `${ctx.id}__${e.name}`),
+        ...vos.map(v => `${ctx.id}__${v.name}`),
+      ];
+      const childrenTotalW = childIds.reduce(
+        (s, cid) => s + getMeasured(cid, CHILD_W, FB_CHILD_H).w, 0
+      ) + Math.max(0, childCount - 1) * CHILD_GAP_X;
       const clusterW = childCount > 0
-        ? Math.max(rootSize.w, childCount * CHILD_W + (childCount - 1) * CHILD_GAP_X)
+        ? Math.max(rootSize.w, childrenTotalW)
         : rootSize.w;
       // cluster 是 dagre 的占位大盒子：root 自身 + 其下所有 child 的总高
       // child 偏移 = rootH + CHILD_OFFSET_Y_MIN，children 各自高度用 fallback（测量后整体重排修正）
@@ -275,23 +284,28 @@ function buildLayout(model, callbacks, highlightIds, pendingMap, measured) {
     const clusterLeft = dn.x - cW / 2;
     const clusterTop = dn.y - dn.height / 2;
 
+    // root 节点自身居中：用真实测量宽度（宽度自适应后不再写死 ROOT_W）
+    const rootSize = getMeasured(id, ROOT_W, FB_ROOT_H);
     nodeMap[id].position = {
-      x: clusterLeft + cW / 2 - ROOT_W / 2,
+      x: clusterLeft + cW / 2 - rootSize.w / 2,
       y: clusterTop,
     };
 
     const children = childrenMap[id] || [];
     if (children.length > 0) {
       // child 偏移 = 真实 root 高度 + 最小间距（修复旧 bug：写死 200 假设 root 占 110 → root 盖住 child）
-      const rootSize = getMeasured(id, ROOT_W, FB_ROOT_H);
       const childOffsetY = rootSize.h + CHILD_OFFSET_Y_MIN;
-      const totalChildW = children.length * CHILD_W + (children.length - 1) * CHILD_GAP_X;
-      const childStartX = clusterLeft + cW / 2 - totalChildW / 2;
+      // children 横向排布用各自真实测量宽度累加（宽度自适应后每个 child 宽度可能不同）
+      const childWidths = children.map(cid => getMeasured(cid, CHILD_W, FB_CHILD_H).w);
+      const totalChildW = childWidths.reduce((s, w) => s + w, 0) + (children.length - 1) * CHILD_GAP_X;
+      let cursorX = clusterLeft + cW / 2 - totalChildW / 2;
       children.forEach((cid, i) => {
+        const w = childWidths[i];
         nodeMap[cid].position = {
-          x: childStartX + i * (CHILD_W + CHILD_GAP_X),
+          x: cursorX,
           y: clusterTop + childOffsetY,
         };
+        cursorX += w + CHILD_GAP_X;
       });
     }
   });

@@ -108,6 +108,20 @@ function ServiceCard({ svc, businessRules }) {
           <div className="constraint-row">{svc.operates_on.join(' · ')}</div>
         </div>
       )}
+      {svc.methods && svc.methods.length > 0 && (
+        <div className="member-section">
+          <div className="sub-label">操作 <span className="sub-count">{svc.methods.length}</span></div>
+          {svc.methods.map((m, i) => (
+            <div key={i} className="entity-method-row" style={{flexDirection:'column',alignItems:'flex-start',gap:'2px'}}>
+              <div>
+                <span className="em-name">{m.name}</span>
+                {m.returns && <span className="em-desc"> → {m.returns}</span>}
+              </div>
+              {m.description && <div className="em-desc" style={{paddingLeft:'0'}}>{m.description}</div>}
+            </div>
+          ))}
+        </div>
+      )}
       {businessRules && businessRules.length > 0 && (
         <div className="member-section">
           <div className="sub-label">业务规则 <span className="sub-count">{businessRules.length}</span></div>

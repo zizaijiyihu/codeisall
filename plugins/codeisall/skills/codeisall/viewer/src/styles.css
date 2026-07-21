@@ -55,22 +55,26 @@ body {
   border-radius: 10px;
   border: 2px solid;
   background: #ffffff;
-  /* 节点宽度固定：与 DomainView.jsx 的 CHILD_W / ROOT_W 严格一致，
-     避免内容把节点撑大、击穿布局间距导致相邻节点重叠 */
-  width: 300px;
+  /* 宽度内容自适应：不再固定 300px。
+     - min-width 保底（短名字节点不会太窄）
+     - max-width 兜顶（极端长内容/名字不撑爆画布）
+     宽度变化同高度一样进测量回流（measured.width），dagre 据此重排，不新增机制。
+     这样 title 不折行、内容不溢出固定边界。 */
+  min-width: 240px;
+  max-width: 460px;
   box-shadow: 0 1px 6px rgba(0,0,0,0.08);
   transition: box-shadow 0.2s;
 }
-/* root / service 略宽（容纳更多 badge：AGGREGATE ROOT / DOMAIN SERVICE） */
+/* root / service 与普通节点同规则（不再单独固定 320px） */
 .member-node.type-root,
 .member-node.type-service {
-  width: 320px;
+  min-width: 260px;
 }
 .member-node-name {
-  /* 不截断：长名字（如 PricingService）允许换行完整显示，
-     节点高度由测量回流自适应，不再吃掉名字尾部。
+  /* title 不折行：一行显示完整聚合根/实体/服务名。
+     节点宽度自适应内容（min/max-width），由 title 撑开而非折行。
      字体属性见下方第二个 .member-node-name 块。 */
-  word-break: break-word;
+  white-space: nowrap;
 }
 
 .member-node:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
