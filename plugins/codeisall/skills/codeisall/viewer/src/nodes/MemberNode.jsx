@@ -71,7 +71,7 @@ function MemberNode({ data }) {
   const pendingCls = pendingChange ? `pending-${pendingChange.change_type}` : '';
 
   return (
-    <div className={`member-node type-${memberType} ${highlighted ? 'knowledge-highlighted' : ''} ${pendingCls}`}>
+    <div className={`member-node type-${memberType} ${expanded ? 'expanded' : ''} ${highlighted ? 'knowledge-highlighted' : ''} ${pendingCls}`}>
       {pendingChange && (
         <div className={`pending-badge change-${pendingChange.change_type}`} title={pendingChange.reason}>
           {pendingChange.change_type === 'add' && '＋ 待新增'}

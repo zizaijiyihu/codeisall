@@ -67,12 +67,19 @@ body {
   width: 320px;
 }
 .member-node-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* 不截断：长名字（如 PricingService）允许换行完整显示，
+     节点高度由测量回流自适应，不再吃掉名字尾部。
+     字体属性见下方第二个 .member-node-name 块。 */
+  word-break: break-word;
 }
 
 .member-node:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+
+/* 展开态：浮起遮挡兄弟，不触发重排（局部 popover 语义，折叠态布局保持自洽） */
+.member-node.expanded {
+  z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
 
 .member-node.type-root { border-color: #0969da; }
 .member-node.type-entity { border-color: #1a7f37; }
@@ -521,6 +528,16 @@ body {
   margin-bottom: 2px;
 }
 .edge-event-sublabel { color: #57606a; font-weight: 400; }
+
+.edge-event-dir {
+  font-family: "SF Mono", monospace;
+  font-size: 10px;
+  color: #0969da;
+  background: #ddf4ff;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-weight: 600;
+}
 
 .edge-event-meta {
   font-size: 10px;

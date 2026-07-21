@@ -90,11 +90,14 @@ export default function EventEdge({
               onWheel={(e) => e.stopPropagation()}       // 阻止冒泡到 React Flow，避免被解释为画布缩放
               onMouseDown={(e) => e.stopPropagation()}   // 防止被识别为 panning
             >
-              {/* 多事件：列每个事件 + 元信息（数据流 / 失败策略） */}
+              {/* 多事件：列每个事件 + 方向(双向合并时区分) + 元信息（数据流 / 失败策略） */}
               {events.map((ev, idx) => (
                 <div key={idx} className="edge-event-block">
                   <div className="edge-event-title">
                     <strong>{ev.event}</strong>
+                    {ev.direction && events.length > 1 && (
+                      <span className="edge-event-dir"> {ev.direction}</span>
+                    )}
                     {ev.label ? <span className="edge-event-sublabel"> · {ev.label}</span> : null}
                   </div>
                   <div className="edge-event-meta">
